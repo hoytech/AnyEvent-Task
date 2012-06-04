@@ -1,6 +1,6 @@
 package AnyEvent::Task;
 
-use common:sense;
+use common::sense;
 
 our $VERSION = '0.1';
 
@@ -25,14 +25,14 @@ AnyEvent::Task - Distributed task management infrastructure
                    listen => ['unix/', '/tmp/anyevent-task.socket'],
                    setup => sub {
                      open($dev_urandom, "/dev/urandom") || die "open urandom: $!";
-                   };
+                   },
                    interface => {
                      hash_passwd => sub {
                        my ($plaintext_passwd) = @_;
                        read($dev_urandom, my $salt, 16) == 16 || die "bad read from urandom";
                        return Authen::Passphrase::BlowfishCrypt->new(cost => 10,
                                                                      salt => $salt,
-                                                                     passphrase => $passwd)
+                                                                     passphrase => $plaintext_passwd)
                                                                ->as_crypt;
 
                      },
