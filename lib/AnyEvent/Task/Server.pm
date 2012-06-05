@@ -119,7 +119,7 @@ sub handle_new_connection {
     close($fh);
     close($monitor_fh1);
     close($monitor_fh2);
-    die "fork failed: $!"; ## FIXME: should just log this instead
+    die "fork failed: $!";
   }
 }
 
