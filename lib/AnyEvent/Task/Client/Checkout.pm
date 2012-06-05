@@ -3,6 +3,7 @@ package AnyEvent::Task::Client::Checkout;
 use common::sense;
 
 use Scalar::Util;
+use Guard;
 
 use overload fallback => 1,
              '&{}' => \&invoked_as_sub;
@@ -34,6 +35,8 @@ sub AUTOLOAD {
   my $name = $AUTOLOAD;
   $name =~ s/.*://;
 
+  return $self->queue_request([ $name, @_, ]) if wantarray;
+
   $self->queue_request([ $name, @_, ]);
   return;
 }
@@ -42,7 +45,10 @@ sub invoked_as_sub {
   my $self = shift;
 
   return sub {
+    return $self->queue_request([ @_, ]) if wantarray;
+
     $self->queue_request([ @_, ]);
+    return;
   };
 }
 
@@ -57,6 +63,12 @@ sub queue_request {
   $self->install_timeout_timer;
 
   $self->try_to_fill_requests;
+
+  if (wantarray) {
+    return guard {
+      ## FIXME: abort request and/or whole checkout?
+    };
+  }
 }
 
 sub install_timeout_timer {
