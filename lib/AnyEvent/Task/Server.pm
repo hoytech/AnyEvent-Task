@@ -60,13 +60,19 @@ sub new {
 
 
 
-my @parent_sockets;
+our @children_sockets;
 
 sub fork_task_server {
   my ($socka, $sockb) = AnyEvent::Util::portable_socketpair;
 
-  if (!fork) {
+  my $pid = fork;
+
+  die "couldn't fork: $!" if !defined $pid;
+
+  if (!$pid) {
     close($socka);
+
+    ## !! FIXME: should close all other children_sockets here
 
     ## If parent closes its side of the socket we should exit
     my $watcher = AE::io $sockb, 0, sub { exit };
@@ -78,7 +84,10 @@ sub fork_task_server {
 
   close $sockb;
 
-  push @parent_sockets, $socka;
+  return ($socka, $pid) if wantarray;
+
+  push @children_sockets, $socka; # keep reference alive
+  return;
 }
 
 
@@ -99,6 +108,8 @@ sub handle_new_connection {
     };
   } elsif ($rv == 0) {
     close($monitor_fh1);
+
+    ## !! FIXME: close $self->{children}->{*}->{monitor_fh}
 
     $self->{setup}->();
 
