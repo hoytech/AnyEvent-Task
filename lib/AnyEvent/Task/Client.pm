@@ -89,7 +89,7 @@ sub install_populate_workers_timer {
 
   return if exists $self->{populate_workers_timer};
 
-  $self->{populate_workers_timer} = AE::timer 0.1, 0.5, sub {
+  $self->{populate_workers_timer} = AE::timer 0.2, 1, sub {
     $self->populate_workers;
   };
 }
