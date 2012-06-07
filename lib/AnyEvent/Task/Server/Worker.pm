@@ -16,7 +16,7 @@ my $attempt_graceful_stop;
 
 
 sub handle_worker {
-  my ($interface, $fh, $monitor_fh) = @_;
+  my ($server, $fh, $monitor_fh) = @_;
 
   AnyEvent::Util::fh_nonblocking $fh, 0;
   AnyEvent::Util::fh_nonblocking $monitor_fh, 0;
@@ -35,7 +35,7 @@ sub handle_worker {
         $sel->remove($monitor_fh);
         my_syswrite($fh, encode_json(['sk']));
       } elsif ($ready == $fh) {
-        process_data($interface, $fh);
+        process_data($server, $fh);
       }
     }
   }
@@ -44,7 +44,7 @@ sub handle_worker {
 
 
 sub process_data {
-  my ($interface, $fh) = @_;
+  my ($server, $fh) = @_;
 
   my $read_rv = sysread $fh, my $buf, 4096;
 
@@ -67,7 +67,7 @@ sub process_data {
       my $val;
 
       eval {
-        $val = scalar $interface->(@$input);
+        $val = scalar $server->{interface}->(@$input);
       };
 
       my $err = $@;
@@ -85,13 +85,7 @@ sub process_data {
 
       my_syswrite($fh, encode_json($output));
     } elsif ($cmd eq 'dn') {
-      $output = ['dn', $output_meta, ];
-
-      if ($attempt_graceful_stop) {
-        $output_meta->{sk} = 1;
-      }
-
-      my_syswrite($fh, encode_json($output));
+      $server->{checkout_done}->();
     } else {
       die "unknown command: $cmd";
     }

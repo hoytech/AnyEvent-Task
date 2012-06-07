@@ -20,6 +20,7 @@ sub new {
 
 
   $self->{setup} = $arg{setup} || sub {};
+  $self->{checkout_done} = $arg{checkout_done} || sub {};
 
 
   if ($arg{listen}) {
@@ -116,7 +117,7 @@ sub handle_new_connection {
 
     $self->{setup}->();
 
-    AnyEvent::Task::Server::Worker::handle_worker($self->{interface}, $fh, $monitor_fh2);
+    AnyEvent::Task::Server::Worker::handle_worker($self, $fh, $monitor_fh2);
     die "handle_worker should never return";
   } else {
     close($fh);

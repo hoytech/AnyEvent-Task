@@ -113,10 +113,12 @@ sub try_to_fill_requests {
 
   $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
-  $self->{worker}->push_read( json => sub {
+  my $cmd_handler; $cmd_handler = sub {
     my ($handle, $response) = @_;
 
     my ($response_code, $meta, $response_value) = @$response;
+
+    $self->{worker_wants_to_shutdown} = 1 if $meta->{sk};
 
     if ($response_code eq 'ok') {
       local $@ = undef;
@@ -125,15 +127,20 @@ sub try_to_fill_requests {
       local $@ = $response_value;
       $cb->($self);
     } elsif ($response_code eq 'sk') {
-      die "sk not implemented";
+      $self->{worker_wants_to_shutdown} = 1;
+      $self->{worker}->push_read( json => $cmd_handler );
+      return;
     } else {
       die "Unrecognized response_code: $response_code";
     }
 
     delete $self->{timeout_timer};
+    undef $cmd_handler; # reference keeps checkout from being destroyed
 
     $self->try_to_fill_requests;
-  });
+  };
+
+  $self->{worker}->push_read( json => $cmd_handler );
 }
 
 sub DESTROY {
@@ -142,6 +149,7 @@ sub DESTROY {
   $self->{client}->remove_pending_checkout($self);
 
   if (exists $self->{worker}) {
+    $self->{worker}->push_write( json => [ 'dn', {} ] );
     $self->{client}->make_worker_available($self->{worker});
     delete $self->{worker};
     $self->{client}->try_to_fill_pending_checkouts;

@@ -292,8 +292,6 @@ Normal request:
 Transaction done:
   client -> worker
     ['dn', {META}]
-         <-
-    ['dn', {META}]
 
 
 Client wants to shutdown:
@@ -316,7 +314,7 @@ TODO
 servers must wait() on all their children before terminating
   - support relinquishing accept() socket during this period?
 
-Implement worker-requested "sk" graceful shutdown
+Test worker-requested "sk" graceful shutdown
   - support "memory leak protection" scheduled re-forking
 
 Manual termination of checkouts
