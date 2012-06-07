@@ -7,6 +7,7 @@ use AnyEvent::Util;
 use POSIX;
 use IO::Select;
 use JSON::XS;
+use Scalar::Util qw/blessed/;
 
 
 my $json;
@@ -71,6 +72,7 @@ sub process_data {
       my $err = $@;
 
       if ($err) {
+        $err = "$err" if blessed $err;
         $output = ['er', $err,];
       } else {
         $output = ['ok', $val,];
