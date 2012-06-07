@@ -282,18 +282,18 @@ PROTOCOL
 
 Normal request:
   client -> worker
-    ['do', **ARGS**]
+    ['do', {META}, **ARGS**]
          <-
-    ['ok', *RESULT*, {*META*}]
+    ['ok', {META}, *RESULT*]
          OR
-    ['er', *ERR_MSG*, {*META*}]
+    ['er', {META}, *ERR_MSG*]
 
 
 Transaction done:
   client -> worker
-    ['dn']
+    ['dn', {META}]
          <-
-    ['dn', {*META}]
+    ['dn', {META}]
 
 
 Client wants to shutdown:
@@ -302,7 +302,7 @@ Client wants to shutdown:
 
 Worker wants to shutdown:
   worker -> client
-    ['sk']
+    ['sk', {META}]
          <-
     (client now closes connection)
 

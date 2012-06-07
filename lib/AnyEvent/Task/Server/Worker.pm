@@ -58,9 +58,10 @@ sub process_data {
 
   for my $input ($json->incr_parse($buf)) {
     my $output;
-    my $meta = {};
+    my $output_meta = {};
 
     my $cmd = shift @$input;
+    my $input_meta = shift @$input;
 
     if ($cmd eq 'do') {
       my $val;
@@ -73,26 +74,22 @@ sub process_data {
 
       if ($err) {
         $err = "$err" if blessed $err;
-        $output = ['er', $err,];
+        $output = ['er', $output_meta, $err,];
       } else {
-        $output = ['ok', $val,];
+        $output = ['ok', $output_meta, $val,];
       }
 
       if ($attempt_graceful_stop) {
-        $meta->{sk} = 1;
+        $output_meta->{sk} = 1;
       }
-
-      push @$output, $meta if keys %$meta;
 
       my_syswrite($fh, encode_json($output));
     } elsif ($cmd eq 'dn') {
-      $output = ['dn',];
+      $output = ['dn', $output_meta, ];
 
       if ($attempt_graceful_stop) {
-        $meta->{sk} = 1;
+        $output_meta->{sk} = 1;
       }
-
-      push @$output, $meta if keys %$meta;
 
       my_syswrite($fh, encode_json($output));
     } else {

@@ -111,12 +111,12 @@ sub try_to_fill_requests {
 
   $self->install_timeout_timer;
 
-  $self->{worker}->push_write( json => [ 'do', @$request, ], );
+  $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
   $self->{worker}->push_read( json => sub {
     my ($handle, $response) = @_;
 
-    my ($response_code, $response_value) = @$response;
+    my ($response_code, $meta, $response_value) = @$response;
 
     if ($response_code eq 'ok') {
       local $@ = undef;
