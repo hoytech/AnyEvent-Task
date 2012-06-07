@@ -19,6 +19,7 @@ sub new {
   $self->{min_workers} = $arg{min_workers} || 2;
   $self->{max_workers} = $arg{max_workers} || 20;
   $self->{min_workers} = $self->{max_workers} if $self->{min_workers} > $self->{max_workers};
+  $self->{timeout} = $arg{timeout} if exists $arg{timeout};
 
   $self->{total_workers} = 0;
   $self->{connecting_workers} = {};

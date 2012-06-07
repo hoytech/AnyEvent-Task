@@ -19,7 +19,10 @@ sub new {
   $self->{client} = $arg{client};
   Scalar::Util::weaken($self->{client});
 
-  $self->{timeout} = exists $arg{timeout} ? $arg{timeout} : 30;
+  $self->{timeout} = exists $arg{timeout} ? $arg{timeout} :
+                     exists $arg{client}->{timeout} ? $arg{client}->{timeout} :
+                     30;
+
   $self->{on_error} = $arg{on_error} || sub {};
 
   $self->{pending_requests} = [];
