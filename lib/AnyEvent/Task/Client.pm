@@ -76,7 +76,7 @@ sub populate_workers {
                                 $self->populate_workers;
                               };
 
-      $self->{available_workers}->{$worker} = $worker;
+      $self->make_worker_available($worker);
 
       $self->try_to_fill_pending_checkouts;
     };
