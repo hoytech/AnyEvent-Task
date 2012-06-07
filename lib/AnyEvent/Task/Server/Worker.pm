@@ -66,6 +66,10 @@ sub process_data {
     if ($cmd eq 'do') {
       my $val;
 
+      if ($attempt_graceful_stop) {
+        $output_meta->{sk} = 1;
+      }
+
       eval {
         $val = scalar $server->{interface}->(@$input);
       };
@@ -76,14 +80,22 @@ sub process_data {
         $err = "$err" if blessed $err;
         $output = ['er', $output_meta, $err,];
       } else {
-        $output = ['ok', $output_meta, $val,];
+        if (blessed $val) {
+          $val = "interface returned object: " . ref($val) . "=($val)";
+          $output = ['er', $output_meta, $val,];
+        } else {
+          $output = ['ok', $output_meta, $val,];
+        }
       }
 
-      if ($attempt_graceful_stop) {
-        $output_meta->{sk} = 1;
+      my $output_json = eval { encode_json($output); };
+
+      if ($@) {
+        $output = ['er', $output_meta, "error JSON encoding interface output: $@",];
+        $output_json = encode_json($output);
       }
 
-      my_syswrite($fh, encode_json($output));
+      my_syswrite($fh, $output_json);
     } elsif ($cmd eq 'dn') {
       $server->{checkout_done}->();
     } else {
