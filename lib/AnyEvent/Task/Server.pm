@@ -72,7 +72,7 @@ sub fork_task_server {
   if (!$pid) {
     close($socka);
 
-    ## !! FIXME: should close all other children_sockets here
+    AnyEvent::Util::close_all_fds_except 0, 1, 2, fileno($sockb);
 
     ## If parent closes its side of the socket we should exit
     my $watcher = AE::io $sockb, 0, sub { exit };
@@ -109,7 +109,10 @@ sub handle_new_connection {
   } elsif ($rv == 0) {
     close($monitor_fh1);
 
-    ## !! FIXME: close $self->{children}->{*}->{monitor_fh}
+    ## Don't want keep-alive pipes of other workers open in this worker
+    foreach my $child (keys %{$self->{children}}) {
+      close($self->{children}->{$child}->{monitor_fh});
+    }
 
     $self->{setup}->();
 
