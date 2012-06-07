@@ -130,7 +130,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
 The synopsis makes this module sounds much more complicated than it actually is. L<AnyEvent::Task> is a fork-on-demand but persistent-worker server (L<AnyEvent::Task::Server>) combined with an asynchronous interface to a request queue and pooled-worker client (L<AnyEvent::Task::Client>). Both client and server are of course built with L<AnyEvent> because it's awesome. However, workers can't use AnyEvent (yet).
 
-A server is started with C<< AnyEvent::Task::Server->new >>. This should at least be passed the C<listen> and C<interface> arguments. Keep the returned server object around for as long as you want the server to be running. A C<setup> coderef can be passed in to run some code when a new worker is forked. C<interface> is the code that should handle each request. See the interface section below for its specification.
+A server is started with C<< AnyEvent::Task::Server->new >>. This should at least be passed the C<listen> and C<interface> arguments. Keep the returned server object around for as long as you want the server to be running. C<interface> is the code that should handle each request. See the interface section below for its specification. A C<setup> coderef can be passed in to run some code when a new worker is forked. A C<checkout_done> coderef can be passed in to run some code whenever a checkout is released (see below).
 
 A client is started with C<< AnyEvent::Task::Client->new >>. You only need to pass C<connect> to this. Keep the returned client object around as long as you wish the client to be connected.
 
