@@ -282,11 +282,11 @@ PROTOCOL
 
 Normal request:
   client -> worker
-    ['do', {META}, **ARGS**]
+    ['do', {META}, @ARGS]
          <-
-    ['ok', {META}, *RESULT*]
+    ['ok', {META}, $RESULT]
          OR
-    ['er', {META}, *ERR_MSG*]
+    ['er', {META}, $ERR_MSG]
 
 
 Transaction done:
