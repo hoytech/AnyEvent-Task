@@ -121,7 +121,6 @@ sub try_to_fill_pending_checkouts {
 sub make_worker_occupied {
   my ($self, $worker) = @_;
 
-print "BING OCC!\n";
   ## Cancel the "sk" detection push_read
   $worker->{_queue} = [];
 
@@ -133,7 +132,6 @@ print "BING OCC!\n";
 sub make_worker_available {
   my ($self, $worker) = @_;
 
-print "BING AV!\n";
   ## Cancel any push_read callbacks installed while worker was occupied
   $worker->{_queue} = [];
 
@@ -149,7 +147,6 @@ print "BING AV!\n";
 
 sub destroy_worker {
   my ($self, $worker) = @_;
-print "BING DESTROY\n";
   $self->{total_workers}--;
   $worker->destroy;
   delete $self->{available_workers}->{$worker};
