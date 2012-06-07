@@ -314,8 +314,7 @@ TODO
 servers must wait() on all their children before terminating
   - support relinquishing accept() socket during this period?
 
-Test worker-requested "sk" graceful shutdown
-  - support "memory leak protection" scheduled re-forking
+Write test for worker-requested "sk" graceful shutdown
 
 Manual termination of checkouts
   - Write test to ensure callback isn't run after timing out

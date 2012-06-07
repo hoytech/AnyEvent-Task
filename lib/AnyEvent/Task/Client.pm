@@ -20,11 +20,13 @@ sub new {
   $self->{max_workers} = $arg{max_workers} || 20;
   $self->{min_workers} = $self->{max_workers} if $self->{min_workers} > $self->{max_workers};
   $self->{timeout} = $arg{timeout} if exists $arg{timeout};
+  $self->{max_checkouts} = $arg{max_checkouts} if exists $arg{max_checkouts};
 
   $self->{total_workers} = 0;
   $self->{connecting_workers} = {};
   $self->{available_workers} = {};
   $self->{occupied_workers} = {};
+  $self->{worker_checkout_counts} = {};
 
   $self->{pending_checkouts} = [];
 
@@ -76,6 +78,8 @@ sub populate_workers {
                                 $self->populate_workers;
                               };
 
+      $self->{worker_checkout_counts}->{$worker} = 0;
+
       $self->make_worker_available($worker);
 
       $self->try_to_fill_pending_checkouts;
@@ -126,11 +130,20 @@ sub make_worker_occupied {
 
   delete $self->{available_workers}->{$worker};
   $self->{occupied_workers}->{$worker} = $worker;
+
+  $self->{worker_checkout_counts}->{$worker}++;
 }
 
 
 sub make_worker_available {
   my ($self, $worker) = @_;
+
+  if (exists $self->{max_checkouts}) {
+    if ($self->{worker_checkout_counts}->{$worker} >= $self->{max_checkouts}) {
+      $self->destroy_worker($worker);
+      return;
+    }
+  }
 
   ## Cancel any push_read callbacks installed while worker was occupied
   $worker->{_queue} = [];
@@ -145,12 +158,16 @@ sub make_worker_available {
   $self->{available_workers}->{$worker} = $worker;
 }
 
+
 sub destroy_worker {
   my ($self, $worker) = @_;
-  $self->{total_workers}--;
+
   $worker->destroy;
+
+  $self->{total_workers}--;
   delete $self->{available_workers}->{$worker};
   delete $self->{occupied_workers}->{$worker};
+  delete $self->{worker_checkout_counts}->{$worker};
 }
 
 
