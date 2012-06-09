@@ -11,7 +11,7 @@ use overload fallback => 1,
 our $AUTOLOAD;
 
 
-sub new {
+sub _new {
   my ($class, %arg) = @_;
   my $self = {};
   bless $self, $class;

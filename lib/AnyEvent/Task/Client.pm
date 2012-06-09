@@ -1,6 +1,7 @@
 package AnyEvent::Task::Client;
 
 use common::sense;
+
 use AnyEvent;
 use AnyEvent::Util;
 use AnyEvent::Handle;
@@ -174,7 +175,7 @@ sub destroy_worker {
 sub checkout {
   my ($self, @args) = @_;
 
-  my $checkout = AnyEvent::Task::Client::Checkout->new( client => $self, @args, );
+  my $checkout = AnyEvent::Task::Client::Checkout->_new( client => $self, @args, );
 
   push @{$self->{pending_checkouts}}, $checkout;
 
