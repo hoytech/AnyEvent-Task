@@ -12,6 +12,7 @@ WriteMakefile(
   PREREQ_PM => {
     'common::sense' => 0,
     'AnyEvent' => 0,
+    'Callback::Frame' => 0,
   },
   dist => {
     PREOP => $preop,

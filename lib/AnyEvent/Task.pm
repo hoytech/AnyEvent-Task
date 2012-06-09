@@ -241,7 +241,9 @@ There's about a million CPAN modules that do similar things.
 
 This module is designed to be used in a non-blocking, process-based program on unix. Depending on your exact requirements you might find something else useful: L<Parallel::ForkManager>, L<Thread::Pool>, an HTTP server of some kind, &c.
 
-If you're into AnyEvent, L<AnyEvent::DBI> and L<AnyEvent::Worker> (based on AnyEvent::DBI) can fork worker processes similar to how this module does. L<AnyEvent::Worker::Pool> also has an implementation of a worker pool, although my obviously biased opinion is that AnyEvent::Task is more flexible and better documented.
+If you're into AnyEvent, L<AnyEvent::DBI> and L<AnyEvent::Worker> (based on AnyEvent::DBI), and L<AnyEvent::ForkObject> send and receive commands from worker processes similar to this module.
+
+ L<AnyEvent::Worker::Pool> also has an implementation of a worker pool, although my obviously biased opinion is that AnyEvent::Task is more flexible and better documented.
 
 If you;re into POE there is L<POE::Component::Pool::DBI>, L<POEx::WorkerPool>, L<POE::Component::ResourcePool>, L<POE::Component::PreforkDispatch>, L<Cantella::Worker>, &c.
 
