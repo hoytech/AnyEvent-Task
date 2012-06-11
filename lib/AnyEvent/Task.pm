@@ -55,13 +55,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
                    connect => ['unix/', '/tmp/anyevent-task.socket'],
                  );
 
-    my $checkout; $checkout = $client->checkout(
-                                timeout => 5,
-                                on_error => sub {
-                                              print STDERR "password hashing failed: $@";
-                                              undef $checkout;
-                                            },
-                              );
+    my $checkout; $checkout = $client->checkout( timeout => 5, );
 
     $checkout->hash('secret',
       sub {
@@ -136,7 +130,7 @@ A client is started with C<< AnyEvent::Task::Client->new >>. You only need to pa
 
 After both the server and client are initialised, each process must enter AnyEvent's "main loop" in some way, possibly just C<< AE::cv->recv >>.
 
-In the client process, you may call the C<checkout> method on the client object. This checkout object can be used to run code on a remote worker process in a non-blocking manner. The C<checkout> method doesn't require any arguments, but C<timeout> and C<on_error> are recommended.
+In the client process, you may call the C<checkout> method on the client object. This checkout object can be used to run code on a remote worker process in a non-blocking manner. The C<checkout> method doesn't require any arguments, but C<timeout> is recommended.
 
 You can treat a checkout object as an object that proxies its method calls to a worker process or a function that does the same. You pass the arguments to these method calls as an argument to the checkout object, followed by a callback as the last argument. This callback will be called once the worker process has returned the results. This callback will normally be passed two arguments, the checkout object and the return value. In the event of an exception thrown inside the worker, only the checkout object will be passed in and C<$@> will be set to the error message.
 
@@ -201,11 +195,11 @@ Since this constructor forks and requires using AnyEvent in both the parent and 
 
 The first thing to realise is that each client maintains a "pool" of connections to worker processes. Every time a checkout is issued, it is placed into a first-come, first-serve queue. Once a worker process becomes available, it is associated with that checkout until that checkout is garbage collected. Each checkout also maintains a queue of requests, so that as soon as this worker process is allocated, the requests are filled also on a first-come, first-server basis.
 
-C<timeout> and C<on_error> can be passed as keyword arguments to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and the C<on_error> callback is invoked with C<$@> set to the reason for the error. Note that the C<on_error> callback is only invoked for timeout errors, protocol errors, and manual termination of the checkout by the client (FIXME: implement manual termination). Regular errors that occur when the worker process code throws an exception are returned to the callback coderef as described above.
+C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see L<Callback::Frame>). FIXME: document this better.
 
-Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts. Because of this, you should usually use C<on_error> to handle timeout errors.
+Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts. Because of this, you should usually install a L<Callback::Frame> C<catch> block to handle timeout errors gracefully (log something and send error message to the client if applicable).
 
-Additionally, because of checkout queuing the maximum number of worker processes a client should attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other checkouts becomes available. Note that typically a request is issued as soon as the checkout is created and in this case the timer starts then, meaning that some checkouts may never be serviced if the system can't handle the load (the checkout's C<on_error> handler will be called with a timeout error).
+Additionally, because of checkout queuing the maximum number of worker processes a client should attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other checkouts becomes available. Note that typically a request is issued as soon as the checkout is created and in this case the timer starts then, meaning that some checkouts may never be serviced if the system can't handle the load.
 
 The C<min_workers> argument can be used to "pre-fork" some "hot-standby" worker processes when creating the client. The default is 2 though note that this may change (FIXME: consider if the default should be 0).
 

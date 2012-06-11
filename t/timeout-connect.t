@@ -2,6 +2,8 @@ use common::sense;
 
 use List::Util;
 
+use Callback::Frame;
+
 use AnyEvent::Strict;
 use AnyEvent::Util;
 use AnyEvent::Task::Server;
@@ -24,17 +26,15 @@ my $client = AnyEvent::Task::Client->new(
 my $cv = AE::cv;
 
 {
-  my $checkout = $client->checkout(
-                            timeout => 0.2,
-                            on_error => sub {
-                              print "## on_error: $@\n";
-                              ok(1, "timeout hit");
-                              $cv->send;
-                            });
+  my $checkout = $client->checkout( timeout => 0.2, );
 
-  $checkout->(sub {
+  $checkout->(frame(code => sub {
     ok(0, "checkout was serviced?");
-  });
-
-  $cv->recv;
+  }, catch => sub {
+    print "## on_error: $@\n";
+    ok(1, "timeout hit");
+    $cv->send;
+  }));
 }
+
+$cv->recv;

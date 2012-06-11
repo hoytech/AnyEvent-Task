@@ -5,6 +5,9 @@ use common::sense;
 use Scalar::Util;
 use Guard;
 
+use Callback::Frame;
+
+
 use overload fallback => 1,
              '&{}' => \&invoked_as_sub;
 
@@ -22,8 +25,6 @@ sub _new {
   $self->{timeout} = exists $arg{timeout} ? $arg{timeout} :
                      exists $arg{client}->{timeout} ? $arg{client}->{timeout} :
                      30;
-
-  $self->{on_error} = $arg{on_error} || sub {};
 
   $self->{pending_requests} = [];
 
@@ -61,6 +62,9 @@ sub queue_request {
   die "can't perform request on checkout because an error occurred: $self->{error_occurred}"
     if exists $self->{error_occurred};
 
+  $request->[-1] = frame(code => $request->[-1])
+    unless Callback::Frame::is_frame($request->[-1]);
+
   push @{$self->{pending_requests}}, $request;
 
   $self->install_timeout_timer;
@@ -88,15 +92,29 @@ sub install_timeout_timer {
       delete $self->{worker};
     }
 
-    my $err = "timed out after $self->{timeout} seconds";
-
-    {
-      local $@ = $err;
-      $self->{on_error}->();
-    }
-
-    $self->{error_occurred} = $err;
+    $self->throw_error("timed out after $self->{timeout} seconds");
   };
+}
+
+sub throw_error {
+  my ($self, $err) = @_;
+
+  my $current_cb;
+
+  if ($self->{current_cb}) {
+    $current_cb = $self->{current_cb};
+  } elsif (@{$self->{pending_requests}}) {
+    $current_cb = $self->{pending_requests}->[0]->[-1];
+  }
+
+  if ($current_cb) {
+    frame(existing_frame => $current_cb,
+          code => sub {
+      die $err;
+    })->();
+  }
+
+  $self->{error_occurred} = $err;
 }
 
 sub try_to_fill_requests {
@@ -108,6 +126,7 @@ sub try_to_fill_requests {
   my $request = shift @{$self->{pending_requests}};
 
   my $cb = pop @{$request};
+  $self->{current_cb} = $cb;
 
   $self->install_timeout_timer;
 
@@ -124,8 +143,7 @@ sub try_to_fill_requests {
       local $@ = undef;
       $cb->($self, $response_value);
     } elsif ($response_code eq 'er') {
-      local $@ = $response_value;
-      $cb->($self);
+      $self->throw_error($response_value);
     } elsif ($response_code eq 'sk') {
       $self->{worker_wants_to_shutdown} = 1;
       $self->{worker}->push_read( json => $cmd_handler );
@@ -134,6 +152,7 @@ sub try_to_fill_requests {
       die "Unrecognized response_code: $response_code";
     }
 
+    delete $self->{current_cb};
     delete $self->{timeout_timer};
     undef $cmd_handler; # reference keeps checkout from being destroyed
 

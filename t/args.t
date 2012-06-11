@@ -2,12 +2,14 @@ use common::sense;
 
 use List::Util;
 
+use Callback::Frame;
+
 use AnyEvent::Strict;
 use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
-use Test::More tests => 13;
+use Test::More tests => 12;
 
 
 ## The point of this test is to verify that arguments, errors, and
@@ -55,15 +57,14 @@ my $cv = AE::cv;
     ok($ret->[1] == 1);
   });
 
-  $client->checkout->error('die please', sub {
-    my ($checkout, $ret) = @_;
-
+  $client->checkout->error('die please', frame(code => sub {
+    die "should never get here";
+  }, catch => sub {
     ok($@);
-    ok(!defined $ret);
     ok($@ =~ /ERR: die please/);
 
     $cv->send;
-  });
+  }));
 }
 
 
