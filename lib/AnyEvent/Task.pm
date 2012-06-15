@@ -231,6 +231,8 @@ The client even decides how many minimum and maximum workers it will run at once
 
 =head1 SEE ALSO
 
+L<The AnyEvent::Task github repo|https://github.com/hoytech/AnyEvent-Task>
+
 There's about a million CPAN modules that do similar things.
 
 This module is designed to be used in a non-blocking, process-based program on unix. Depending on your exact requirements you might find something else useful: L<Parallel::ForkManager>, L<Thread::Pool>, an HTTP server of some kind, &c.
