@@ -6,6 +6,7 @@ use AnyEvent;
 use AnyEvent::Util;
 use AnyEvent::Socket;
 
+use AnyEvent::Task::Util;
 use AnyEvent::Task::Server::Worker;
 
 
@@ -60,36 +61,23 @@ sub new {
 }
 
 
-
-our @children_sockets;
-
 sub fork_task_server {
-  my ($socka, $sockb) = AnyEvent::Util::portable_socketpair;
+  my (@args) = @_;
 
-  my $pid = fork;
+  if (wantarray) {
+    return AnyEvent::Task::Util::fork_anyevent_subprocess(sub {
+             AnyEvent::Task::Server->new(@args)->run;
+           });
+  } else {
+    AnyEvent::Task::Util::fork_anyevent_subprocess(sub {
+      AnyEvent::Task::Server->new(@args)->run;
+      return undef;
+    });
 
-  die "couldn't fork: $!" if !defined $pid;
-
-  if (!$pid) {
-    close($socka);
-
-    AnyEvent::Util::close_all_fds_except 0, 1, 2, fileno($sockb);
-
-    ## If parent closes its side of the socket we should exit
-    my $watcher = AE::io $sockb, 0, sub { exit };
-
-    AnyEvent::Task::Server->new(@_)->run;
-
-    die "AnyEvent::Task::Server->run should never return";
+    return undef;
   }
-
-  close $sockb;
-
-  return ($socka, $pid) if wantarray;
-
-  push @children_sockets, $socka; # keep reference alive
-  return;
 }
+
 
 
 
