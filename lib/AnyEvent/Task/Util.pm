@@ -2,6 +2,8 @@ package AnyEvent::Task::Util;
 
 use common::sense;
 
+use AnyEvent::Util;
+
 
 our @children_sockets;
 
