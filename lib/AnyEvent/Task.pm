@@ -260,7 +260,7 @@ Doug Hoyte, C<< <doug@hcsw.org> >>
 
 Copyright 2012 Doug Hoyte.
 
-This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+This module is licensed under the same terms as perl itself.
 
 
 
