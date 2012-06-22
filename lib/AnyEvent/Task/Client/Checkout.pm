@@ -117,6 +117,13 @@ sub throw_error {
   $self->{error_occurred} = $err;
 }
 
+sub throw_error_non_fatal {
+  my ($self, $err) = @_;
+
+  $self->{error_is_non_fatal} = 1;
+  $self->throw_error($err);
+}
+
 sub try_to_fill_requests {
   my ($self) = @_;
 
@@ -143,7 +150,7 @@ sub try_to_fill_requests {
       local $@ = undef;
       $cb->($self, $response_value);
     } elsif ($response_code eq 'er') {
-      $self->throw_error($response_value);
+      $self->throw_error_non_fatal($response_value);
     } elsif ($response_code eq 'sk') {
       $self->{worker_wants_to_shutdown} = 1;
       $self->{worker}->push_read( json => $cmd_handler );
@@ -168,11 +175,18 @@ sub DESTROY {
   $self->{client}->remove_pending_checkout($self);
 
   if (exists $self->{worker}) {
-    $self->{worker}->push_write( json => [ 'dn', {} ] );
-    $self->{client}->make_worker_available($self->{worker});
-    delete $self->{client}->{workers_to_checkouts}->{$self->{worker}};
+    my $worker = $self->{worker};
+    delete $self->{client}->{workers_to_checkouts}->{$worker};
     delete $self->{worker};
-    $self->{client}->try_to_fill_pending_checkouts;
+
+    if ($self->{error_occurred} && !$self->{error_is_non_fatal}) {
+      $self->{client}->destroy_worker($worker);
+      $self->populate_workers;
+    } else {
+      $worker->push_write( json => [ 'dn', {} ] );
+      $self->{client}->make_worker_available($worker);
+      $self->{client}->try_to_fill_pending_checkouts;
+    }
   }
 }
 
