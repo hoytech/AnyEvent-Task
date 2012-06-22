@@ -39,20 +39,14 @@ sub AUTOLOAD {
   my $name = $AUTOLOAD;
   $name =~ s/.*://;
 
-  return $self->queue_request([ $name, @_, ]) if defined wantarray;
-
-  $self->queue_request([ $name, @_, ]);
-  return;
+  return $self->queue_request([ $name, @_, ]);
 }
 
 sub invoked_as_sub {
   my $self = shift;
 
   return sub {
-    return $self->queue_request([ @_, ]) if defined wantarray;
-
-    $self->queue_request([ @_, ]);
-    return;
+    return $self->queue_request([ @_, ]);
   };
 }
 
@@ -71,11 +65,7 @@ sub queue_request {
 
   $self->try_to_fill_requests;
 
-  if (defined wantarray) {
-    return guard {
-      $self->throw_error('manual request abort');
-    };
-  }
+  return;
 }
 
 sub install_timeout_timer {

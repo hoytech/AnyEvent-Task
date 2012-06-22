@@ -50,7 +50,7 @@ my $cv = AE::cv;
     $cv->send;
   }));
 
-undef $guard;
+  $checkout->throw_error("manual request abort");
 }
 
 $cv->recv;
