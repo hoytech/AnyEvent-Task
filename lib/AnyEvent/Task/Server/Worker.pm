@@ -5,7 +5,7 @@ use common::sense;
 use AnyEvent::Util;
 use Guard;
 
-use POSIX;
+use POSIX; ## POSIX::_exit is used so we don't unlink the unix socket file created by our parent before the fork
 use IO::Select;
 use JSON::XS;
 use Scalar::Util qw/blessed/;
@@ -53,7 +53,6 @@ sub process_data {
 
   my $read_rv = sysread $fh, my $buf, 4096;
 
-  ## _exit is used so we don't unlink the unix socket file created by our parent before the fork
   if (!defined $read_rv) {
     return if $!{EINTR};
     POSIX::_exit(1);
@@ -118,12 +117,12 @@ sub my_syswrite {
 
     if (!defined $rv) {
       next if $!{EINTR};
-      exit 1; ## probably parent died and we're getting broken pipe
+      POSIX::_exit(1); ## probably parent died and we're getting broken pipe
     }
 
     return if $rv == length($output);
 
-    exit 2; ## partial write: probably the socket is set nonblocking
+    POSIX::_exit(1); ## partial write: probably the socket is set nonblocking
   }
 }
 
