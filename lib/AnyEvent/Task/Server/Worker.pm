@@ -3,6 +3,7 @@ package AnyEvent::Task::Server::Worker;
 use common::sense;
 
 use AnyEvent::Util;
+use Guard;
 
 use POSIX;
 use IO::Select;
@@ -45,6 +46,10 @@ sub handle_worker {
 
 sub process_data {
   my ($server, $fh) = @_;
+
+  scope_guard { alarm 0 };
+  local $SIG{ALRM} = sub { die "hung worker\n" };
+  alarm $server->{hung_worker_timeout} if $server->{hung_worker_timeout};
 
   my $read_rv = sysread $fh, my $buf, 4096;
 

@@ -27,7 +27,8 @@ sub new {
   $self->{connecting_workers} = {};
   $self->{available_workers} = {};
   $self->{occupied_workers} = {};
-  $self->{worker_checkout_counts} = {};
+  $self->{workers_to_checkouts} = {}; # used to map errors detected on worker connection to checkout callbacks
+  $self->{worker_checkout_counts} = {}; # used for max_checkouts "memory leak protection"
 
   $self->{pending_checkouts} = [];
 
@@ -74,7 +75,10 @@ sub populate_workers {
                               on_read => sub { }, ## So we always have a read watcher and can instantly detect worker deaths
                               on_error => sub {
                                 my ($worker, $fatal, $message) = @_;
-                                print STDERR "connection to worker died\n";
+
+                                my $checkout = $self->{workers_to_checkouts}->{$worker};
+                                $checkout->throw_error('worker connection suddenly died') if $checkout;
+
                                 $self->destroy_worker($worker);
                                 $self->populate_workers;
                               };
@@ -113,6 +117,7 @@ sub try_to_fill_pending_checkouts {
 
     my $checkout = shift @{$self->{pending_checkouts}};
     $checkout->{worker} = $worker;
+    $self->{workers_to_checkouts}->{$worker} = $checkout;
 
     $checkout->try_to_fill_requests;
     return $self->try_to_fill_pending_checkouts;

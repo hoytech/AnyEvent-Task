@@ -22,6 +22,7 @@ sub new {
 
   $self->{setup} = $arg{setup} || sub {};
   $self->{checkout_done} = $arg{checkout_done} || sub {};
+  $self->{hung_worker_timeout} = exists $arg{hung_worker_timeout} ? $arg{hung_worker_timeout} : (60*5);
 
 
   if ($arg{listen}) {

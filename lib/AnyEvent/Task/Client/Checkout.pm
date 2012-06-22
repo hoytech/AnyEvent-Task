@@ -170,6 +170,7 @@ sub DESTROY {
   if (exists $self->{worker}) {
     $self->{worker}->push_write( json => [ 'dn', {} ] );
     $self->{client}->make_worker_available($self->{worker});
+    delete $self->{client}->{workers_to_checkouts}->{$self->{worker}};
     delete $self->{worker};
     $self->{client}->try_to_fill_pending_checkouts;
   }

@@ -317,3 +317,7 @@ Write test for worker-requested "sk" graceful shutdown
 Manual termination of checkouts
   - Write test to ensure callback isn't run after timing out
     or manually terminating checkouts
+
+Document hung_worker_timeout
+
+min_workers == 0 doesn't work.. always starts up 1 worker
