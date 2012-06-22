@@ -39,7 +39,7 @@ sub AUTOLOAD {
   my $name = $AUTOLOAD;
   $name =~ s/.*://;
 
-  return $self->queue_request([ $name, @_, ]) if wantarray;
+  return $self->queue_request([ $name, @_, ]) if defined wantarray;
 
   $self->queue_request([ $name, @_, ]);
   return;
@@ -49,7 +49,7 @@ sub invoked_as_sub {
   my $self = shift;
 
   return sub {
-    return $self->queue_request([ @_, ]) if wantarray;
+    return $self->queue_request([ @_, ]) if defined wantarray;
 
     $self->queue_request([ @_, ]);
     return;
@@ -71,9 +71,9 @@ sub queue_request {
 
   $self->try_to_fill_requests;
 
-  if (wantarray) {
+  if (defined wantarray) {
     return guard {
-      ## FIXME: abort request and/or whole checkout?
+      $self->throw_error('manual request abort');
     };
   }
 }

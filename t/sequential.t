@@ -60,6 +60,8 @@ my $counter = 0;
 
       $cv->send;
     });
+
+    1; ## so new checkout above is called in void context
   });
 
   $client->checkout->(sub {
