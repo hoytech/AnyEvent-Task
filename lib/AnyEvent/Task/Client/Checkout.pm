@@ -39,6 +39,8 @@ sub AUTOLOAD {
   my $name = $AUTOLOAD;
   $name =~ s/.*://;
 
+  $self->{last_name} = $name;
+
   return $self->queue_request([ $name, @_, ]);
 }
 
@@ -46,6 +48,8 @@ sub invoked_as_sub {
   my $self = shift;
 
   return sub {
+    $self->{last_name} = undef;
+
     return $self->queue_request([ @_, ]);
   };
 }
@@ -56,8 +60,22 @@ sub queue_request {
   die "can't perform request on checkout because an error occurred: $self->{error_occurred}"
     if exists $self->{error_occurred};
 
-  $request->[-1] = frame(code => $request->[-1])
-    unless Callback::Frame::is_frame($request->[-1]);
+  unless (Callback::Frame::is_frame($request->[-1])) {
+    my $name = undef;
+
+    if (defined $self->{client}->{name} || defined $self->{last_name}) {
+      $name = defined $self->{client}->{name} ? $self->{client}->{name} : 'ANONYMOUS CLIENT';
+      $name .= ' -> ';
+      $name .= defined $self->{last_name} ? $self->{last_name} : 'NO METHOD';
+    }
+
+    my %args = (code => $request->[-1]);
+
+    $args{name} = $name if defined $name;
+
+    $request->[-1] = frame(%args)
+      unless Callback::Frame::is_frame($request->[-1]);
+  }
 
   push @{$self->{pending_requests}}, $request;
 

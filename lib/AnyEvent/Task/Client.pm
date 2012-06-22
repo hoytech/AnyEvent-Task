@@ -18,6 +18,7 @@ sub new {
   bless $self, $class;
 
   $self->{connect} = $arg{connect} || die "need connect";
+  $self->{name} = $arg{name};
 
   $self->{min_workers} = defined $arg{min_workers} ? $arg{min_workers} : 2;
   $self->{max_workers} = defined $arg{max_workers} ? $arg{max_workers} : 20;
