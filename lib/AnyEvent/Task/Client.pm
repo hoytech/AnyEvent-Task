@@ -2,6 +2,8 @@ package AnyEvent::Task::Client;
 
 use common::sense;
 
+use Scalar::Util;
+
 use AnyEvent;
 use AnyEvent::Util;
 use AnyEvent::Handle;
@@ -117,7 +119,9 @@ sub try_to_fill_pending_checkouts {
 
     my $checkout = shift @{$self->{pending_checkouts}};
     $checkout->{worker} = $worker;
+
     $self->{workers_to_checkouts}->{$worker} = $checkout;
+    Scalar::Util::weaken($self->{workers_to_checkouts}->{$worker});
 
     $checkout->try_to_fill_requests;
     return $self->try_to_fill_pending_checkouts;
