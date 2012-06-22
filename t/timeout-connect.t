@@ -31,7 +31,7 @@ my $cv = AE::cv;
   $checkout->(frame(code => sub {
     ok(0, "checkout was serviced?");
   }, catch => sub {
-    print "## on_error: $@\n";
+    print "## error: $@\n";
     ok(1, "timeout hit");
     $cv->send;
   }));
