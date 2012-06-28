@@ -1,6 +1,7 @@
+AnyEvent-Task-.*.tar.gz
 MANIFEST.bak
 Makefile.old
-Makefile
+Makefile$
 README.pod
 .gitignore
 .git/
