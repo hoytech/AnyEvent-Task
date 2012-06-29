@@ -12,6 +12,8 @@ WriteMakefile(
   PREREQ_PM => {
     'common::sense' => 0,
     'AnyEvent' => 0,
+    'JSON::XS' => 0,
+    'Guard' => 0,
     'Callback::Frame' => 0,
   },
   dist => {
