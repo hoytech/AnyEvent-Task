@@ -16,7 +16,17 @@ my $sel;
 my $attempt_graceful_stop;
 
 
+
 sub handle_worker {
+  eval {
+    handle_worker_wrapped(@_);
+  };
+
+  POSIX::_exit(1);
+}
+
+
+sub handle_worker_wrapped {
   my ($server, $fh, $monitor_fh) = @_;
 
   AnyEvent::Util::fh_nonblocking $fh, 0;
