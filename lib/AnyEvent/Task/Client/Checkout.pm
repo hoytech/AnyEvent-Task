@@ -107,6 +107,9 @@ sub install_timeout_timer {
 sub throw_error {
   my ($self, $err) = @_;
 
+  return if $self->{error_occurred};
+  $self->{error_occurred} = $err;
+
   my $current_cb;
 
   if ($self->{current_cb}) {
@@ -121,12 +124,12 @@ sub throw_error {
       die $err;
     })->();
   }
-
-  $self->{error_occurred} = $err;
 }
 
 sub throw_error_non_fatal {
   my ($self, $err) = @_;
+
+  return if $self->{error_occurred};
 
   $self->{error_is_non_fatal} = 1;
   $self->throw_error($err);
@@ -147,7 +150,7 @@ sub try_to_fill_requests {
 
   $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
-  my $cmd_handler; $cmd_handler = sub {
+  $self->{cmd_handler} = sub {
     my ($handle, $response) = @_;
 
     my ($response_code, $meta, $response_value) = @$response;
@@ -161,7 +164,7 @@ sub try_to_fill_requests {
       $self->throw_error_non_fatal($response_value);
     } elsif ($response_code eq 'sk') {
       $self->{worker_wants_to_shutdown} = 1;
-      $self->{worker}->push_read( json => $cmd_handler );
+      $self->{worker}->push_read( json => $self->{cmd_handler} );
       return;
     } else {
       die "Unrecognized response_code: $response_code";
@@ -169,33 +172,36 @@ sub try_to_fill_requests {
 
     delete $self->{current_cb};
     delete $self->{timeout_timer};
-    undef $cmd_handler; # reference keeps checkout from being destroyed
+    delete $self->{cmd_handler};
 
     $self->try_to_fill_requests;
   };
 
-  $self->{worker}->push_read( json => $cmd_handler );
+  $self->{worker}->push_read( json => $self->{cmd_handler} );
 }
 
 sub DESTROY {
   my ($self) = @_;
 
-  $self->{client}->remove_pending_checkout($self);
+  $self->{client}->remove_pending_checkout($self)
+    if $self->{client};
 
   if (exists $self->{worker}) {
     my $worker = $self->{worker};
-    delete $self->{client}->{workers_to_checkouts}->{$worker};
+    delete $self->{client}->{workers_to_checkouts}->{0 + $worker} if $self->{client};
     delete $self->{worker};
 
     if ($self->{error_occurred} && !$self->{error_is_non_fatal}) {
-      $self->{client}->destroy_worker($worker);
-      $self->populate_workers;
+      $self->{client}->destroy_worker($worker) if $self->{client};
+      $self->{client}->populate_workers if $self->{client};
     } else {
       $worker->push_write( json => [ 'dn', {} ] );
-      $self->{client}->make_worker_available($worker);
-      $self->{client}->try_to_fill_pending_checkouts;
+      $self->{client}->make_worker_available($worker) if $self->{client};
+      $self->{client}->try_to_fill_pending_checkouts if $self->{client};
     }
   }
+
+  $self->{pending_requests} = $self->{current_cb} = $self->{timeout_timer} = $self->{cmd_handler} = undef;
 }
 
 

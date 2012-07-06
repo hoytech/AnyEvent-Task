@@ -60,10 +60,10 @@ sub populate_workers {
     my $service = $self->{connect}->[1];
 
     my $worker_guard;
-    $self->{connecting_workers}->{$worker_guard} = $worker_guard = tcp_connect $host, $service, sub {
+    $self->{connecting_workers}->{0 + $worker_guard} = $worker_guard = tcp_connect $host, $service, sub {
       my $fh = shift;
 
-      delete $self->{connecting_workers}->{$worker_guard};
+      delete $self->{connecting_workers}->{0 + $worker_guard};
 
       if (!$fh) {
         $self->{total_workers}--;
@@ -79,14 +79,14 @@ sub populate_workers {
                               on_error => sub {
                                 my ($worker, $fatal, $message) = @_;
 
-                                my $checkout = $self->{workers_to_checkouts}->{$worker};
+                                my $checkout = $self->{workers_to_checkouts}->{0 + $worker};
                                 $checkout->throw_error('worker connection suddenly died') if $checkout;
 
                                 $self->destroy_worker($worker);
                                 $self->populate_workers;
                               };
 
-      $self->{worker_checkout_counts}->{$worker} = 0;
+      $self->{worker_checkout_counts}->{0 + $worker} = 0;
 
       $self->make_worker_available($worker);
 
@@ -121,8 +121,8 @@ sub try_to_fill_pending_checkouts {
     my $checkout = shift @{$self->{pending_checkouts}};
     $checkout->{worker} = $worker;
 
-    $self->{workers_to_checkouts}->{$worker} = $checkout;
-    Scalar::Util::weaken($self->{workers_to_checkouts}->{$worker});
+    $self->{workers_to_checkouts}->{0 + $worker} = $checkout;
+    Scalar::Util::weaken($self->{workers_to_checkouts}->{0 + $worker});
 
     $checkout->try_to_fill_requests;
     return $self->try_to_fill_pending_checkouts;
@@ -139,10 +139,10 @@ sub make_worker_occupied {
   ## Cancel the "sk" detection push_read
   $worker->{_queue} = [];
 
-  delete $self->{available_workers}->{$worker};
-  $self->{occupied_workers}->{$worker} = $worker;
+  delete $self->{available_workers}->{0 + $worker};
+  $self->{occupied_workers}->{0 + $worker} = $worker;
 
-  $self->{worker_checkout_counts}->{$worker}++;
+  $self->{worker_checkout_counts}->{0 + $worker}++;
 }
 
 
@@ -150,7 +150,7 @@ sub make_worker_available {
   my ($self, $worker) = @_;
 
   if (exists $self->{max_checkouts}) {
-    if ($self->{worker_checkout_counts}->{$worker} >= $self->{max_checkouts}) {
+    if ($self->{worker_checkout_counts}->{0 + $worker} >= $self->{max_checkouts}) {
       $self->destroy_worker($worker);
       return;
     }
@@ -165,8 +165,8 @@ sub make_worker_available {
     $self->destroy_worker($worker) if $response->[0] eq 'sk';
   });
 
-  delete $self->{occupied_workers}->{$worker};
-  $self->{available_workers}->{$worker} = $worker;
+  delete $self->{occupied_workers}->{0 + $worker};
+  $self->{available_workers}->{0 + $worker} = $worker;
 }
 
 
@@ -176,9 +176,9 @@ sub destroy_worker {
   $worker->destroy;
 
   $self->{total_workers}--;
-  delete $self->{available_workers}->{$worker};
-  delete $self->{occupied_workers}->{$worker};
-  delete $self->{worker_checkout_counts}->{$worker};
+  delete $self->{available_workers}->{0 + $worker};
+  delete $self->{occupied_workers}->{0 + $worker};
+  delete $self->{worker_checkout_counts}->{0 + $worker};
 }
 
 
