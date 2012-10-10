@@ -1,2 +1,8 @@
+0.600   2012-10-09
+  * Switch version number format
+  * Fix missing dependencies
+  * New tests
+  * Allow checkouts to be aborted at any time by clients
+
 0.5.1   2012-06-18
   * Initial release
