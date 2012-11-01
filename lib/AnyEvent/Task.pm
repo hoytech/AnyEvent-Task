@@ -2,7 +2,7 @@ package AnyEvent::Task;
 
 use common::sense;
 
-our $VERSION = '0.600';
+our $VERSION = '0.601';
 
 
 1;

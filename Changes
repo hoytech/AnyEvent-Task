@@ -1,3 +1,6 @@
+0.601   2012-10-31
+  * Bugfix in surge test
+
 0.600   2012-10-09
   * Switch version number format
   * Fix missing dependencies
