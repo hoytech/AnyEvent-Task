@@ -42,7 +42,7 @@ for my $i (1 .. 100) {
     is($ret, $i);
     $counter++;
 
-    $cv->send if $i == 100;
+    $cv->send if $counter == 100;
   });
 }
 
