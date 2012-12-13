@@ -60,7 +60,6 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
     $checkout->hash('secret',
       sub {
         my ($checkout, $crypted) = @_;
-        die "hashing process died: $@" if defined $@;
 
         print "Hashed password is $crypted\n";
 
@@ -115,7 +114,6 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
                             undef, $username,
       sub {
         my ($dbh, $row) = @_;
-        die "DB lookup failed: $@" if defined $dbh;
         print "User's email is $row->{email}\n";
         ## Use same $dbh here if using transactions
       });
