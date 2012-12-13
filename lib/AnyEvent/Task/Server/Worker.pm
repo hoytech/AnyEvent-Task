@@ -11,6 +11,7 @@ use JSON::XS;
 use Scalar::Util qw/blessed/;
 
 
+my $setup_has_been_run;
 my $json;
 my $sel;
 my $attempt_graceful_stop;
@@ -85,6 +86,11 @@ sub process_data {
       }
 
       eval {
+        if (!$setup_has_been_run) {
+          $server->{setup}->();
+          $setup_has_been_run = 1;
+        }
+
         $val = scalar $server->{interface}->(@$input);
       };
 
@@ -92,6 +98,9 @@ sub process_data {
 
       if ($err) {
         $err = "$err" if blessed $err;
+
+        $err = "setup exception: $err" if !$setup_has_been_run;
+
         $output = ['er', $output_meta, $err,];
       } else {
         if (blessed $val) {

@@ -9,7 +9,7 @@ use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
-use Test::More tests => 14;
+use Test::More tests => 15;
 
 
 ## The point of this test is to verify that arguments, errors, and
@@ -63,6 +63,7 @@ my $cv = AE::cv;
   }, catch => sub {
     ok($@);
     ok($@ =~ /ERR: die please/);
+    ok($@ !~ /setup exception/i);
   }));
 
   frame(code => sub {

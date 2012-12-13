@@ -104,8 +104,6 @@ sub handle_new_connection {
       close($self->{children}->{$child}->{monitor_fh});
     }
 
-    $self->{setup}->();
-
     AnyEvent::Task::Server::Worker::handle_worker($self, $fh, $monitor_fh2);
     die "handle_worker should never return";
   } else {
