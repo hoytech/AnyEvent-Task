@@ -1,3 +1,7 @@
+0.602   2012-12-13
+  * Exceptions in setup callback are now propagated to client
+  * Minor doc updates (more coming)
+
 0.601   2012-10-31
   * Bugfix in surge test
 
