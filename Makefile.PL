@@ -1,10 +1,7 @@
 use ExtUtils::MakeMaker;
 
-my $preop =
-    'perldoc -uT $(VERSION_FROM) | tee $(DISTVNAME)/README.pod > README.pod;' .
-    'pod2text README.pod | tee $(DISTVNAME)/README > README';
 
-WriteMakefile(
+my %args = (
   NAME => 'AnyEvent::Task',
   VERSION_FROM => 'lib/AnyEvent/Task.pm',
   LIBS => [''],
@@ -16,7 +13,21 @@ WriteMakefile(
     'Guard' => 0,
     'Callback::Frame' => 0,
   },
+  LICENSE => 'perl',
   dist => {
-    PREOP => $preop,
+    PREOP => 'perldoc -uT $(VERSION_FROM) > README.pod; pod2text README.pod > $(DISTVNAME)/README',
   },
 );
+
+
+my $eummv = eval ($ExtUtils::MakeMaker::VERSION);
+if ($eummv >= 6.45) {
+    $args{META_MERGE} = {
+        resources => {
+            repository => 'git://github.com/hoytech/AnyEvent-Task.git',
+            bugtracker => 'https://github.com/hoytech/AnyEvent-Task/issues',
+        },
+    };
+}
+
+WriteMakefile(%args);
