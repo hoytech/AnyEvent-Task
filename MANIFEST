@@ -16,6 +16,8 @@ t/args.t
 t/manual-request-abort.t
 t/max_checkouts.t
 t/sequential.t
+t/setup-errors.t
+t/setup.t
 t/surge.t
 t/timeout-connect.t
 t/timeout-hung-worker.t
