@@ -44,7 +44,7 @@ my $cv = AE::cv;
     die "checkout was serviced?";
   }, catch => sub {
     my $err = $@;
-    print "## error: $err\n";
+    diag("Hung worker error: $err");
     ok(1, "error hit");
     ok($err !~ /timed out after/, "no timed out err");
     ok($err =~ /hung worker/, "hung worker err");
