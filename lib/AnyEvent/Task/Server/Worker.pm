@@ -33,7 +33,7 @@ sub handle_worker_wrapped {
   AnyEvent::Util::fh_nonblocking $fh, 0;
   AnyEvent::Util::fh_nonblocking $monitor_fh, 0;
 
-  $json = new JSON::XS;
+  $json = JSON::XS->new->utf8;
 
   $sel = IO::Select->new;
   $sel->add($fh, $monitor_fh);
