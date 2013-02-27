@@ -121,7 +121,48 @@ After both the server and client are initialised, each process must enter AnyEve
 
 In the client process, you may call the C<checkout> method on the client object. This checkout object can be used to run code on a remote worker process in a non-blocking manner. The C<checkout> method doesn't require any arguments, but C<timeout> is recommended.
 
-You can treat a checkout object as an object that proxies its method calls to a worker process or a function that does the same. You pass the arguments to these method calls as an argument to the checkout object, followed by a callback as the last argument. This callback will be called once the worker process has returned the results. This callback will normally be passed two arguments, the checkout object and the return value. In the event of an exception thrown inside the worker, only the checkout object will be passed in and C<$@> will be set to the error message.
+You can treat a checkout object as an object that proxies its method calls to a worker process or a function that does the same. You pass the arguments to these method calls as an argument to the checkout object, followed by a callback as the last argument. This callback will be called once the worker process has returned the results. This callback will normally be passed two arguments, the checkout object and the return value. In the event of an exception thrown, an error is raised in the dynamic context of the callback (see the L<ERROR HANDLING> section).
+
+
+
+
+=head1 DESIGN
+
+Each client maintains a "pool" of connections to worker processes. Every time a checkout is issued, it is placed into a first-come, first-serve queue. Once a worker process becomes available, it is associated with that checkout until that checkout is garbage collected. Each checkout also maintains a queue of requests, so that as soon as this worker process is allocated, the requests are filled also on a first-come, first-server basis.
+
+C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see the  L<ERROR HANDLING> section).
+
+Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts. Because of this, you should usually install a L<Callback::Frame> C<catch> block to handle timeout errors gracefully (log something and send error message to the client if applicable).
+
+Additionally, because of checkout queuing the maximum number of worker processes a client should attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other checkouts becomes available. Note that typically a request is issued as soon as the checkout is created and in this case the timer starts then, meaning that some checkouts may never be serviced if the system can't handle the load.
+
+The C<min_workers> argument can be used to "pre-fork" some "hot-standby" worker processes when creating the client. The default is 2 though note that this may change (FIXME: consider if the default should be 0).
+
+
+
+
+
+=head1 STARTING THE SERVER
+
+Technically, running the server and the client in the same process is possible, but is highly discouraged since the server will C<fork()> when the client desires a worker process. In this case, all descriptors in use by the client would be duped into the worker process and the worker would have to close all the extra- descriptors created by the client. Also, forking a busy client may be memory-inefficient.
+
+Since it's more of a bother than it's worth to run the server and the client in the same process, there is an alternate server constructor, C<AnyEvent::Task::Server::fork_task_server>. It can be passed the same arguments as the regular C<new> constructor:
+
+    ## my ($keepalive_pipe, $pid) =
+    AnyEvent::Task::Server::fork_task_server(
+      listen => ['unix/', '/tmp/anyevent-task.socket'],
+      interface => sub {
+                         return "Hello from PID $$";
+                       },
+    );
+
+The only differences between this and the regular constructor is that this will fork a process which becomes the server, and that it will install a "keep-alive" pipe between the server and the client. This keep-alive pipe will be used by the server to detect when the client/parent process exits.
+
+If C<AnyEvent::Task::Server::fork_task_server> is called in a void context, then the reference to this keep-alive pipe is pushed onto C<@AnyEvent::Task::Server::children_sockets>. Otherwise, the keep-alive pipe and the server's PID are returned. Closing the pipe will terminate the worker gracefully. Killing the PID will attempt to terminate the worker immediately.
+
+Since this constructor forks and requires using AnyEvent in both the parent and child processes, it is important that you not install any AnyEvent watchers before calling it. The usual caveats about forking AnyEvent applications apply (see AnyEvent docs).
+
+
 
 
 
@@ -158,39 +199,46 @@ A future backwards compatible RPC protocol may use L<Storable> or something else
 
 
 
+=head1 ERROR HANDLING
 
-=head1 STARTING THE SERVER
+If you expected a function (ie C<hash>) to throw some kind of exception, in a synchronous program you might do something like this (assuming C<$conn> is some kind of connection context object):
 
-Technically, running the server and the client in the same process is possible, but is highly discouraged since the server will C<fork()> when the client desires a worker process. When this happens, all descriptors in use by the client and server are duped into the worker process. This will at least interfere with cleaning up (closing) these descriptors in the client. So after a C<fork()> the worker should close all descriptors except for its connection to the client and a pipe to the server which is used in order to detect a server shutdown (and then gracefully exit). Also, forking a busy client may be memory-inefficient.
+    my $crypted;
 
-Since it's more of a bother than it's worth to run the server and the client in the same process, there is an alternate server constructor, C<AnyEvent::Task::Server::fork_task_server>. It can be passed the same arguments as the regular C<new> constructor:
+    eval {
+      $crypted = hash('secret');
+    };
 
-    ## my ($keepalive_pipe, $pid) =
-    AnyEvent::Task::Server::fork_task_server(
-      listen => ['unix/', '/tmp/anyevent-task.socket'],
-      interface => sub {
-                         return "Hello from PID $$";
-                       },
-    );
+    if ($@) {
+      $conn->log("Error: $@");
+    } else {
+      $conn->response("Hashed password is $crypted\n");
+    }
 
-The only differences between this and the regular constructor is that this will fork a process which becomes the server, and that it will install a "keep-alive" pipe between the server and the client. This keep-alive pipe will be used by the server to detect when the client/parent process exits.
+But in an asynchronous program, typically the C<hash> function would initiate some kind of asynchronous operation and then return immediately. The error might come back at any time in the future, in which case you need a way to map the exception that is thrown back to the C<$conn> object.
 
-If C<AnyEvent::Task::Server::fork_task_server> is called in a void context, then the reference to this keep-alive pipe is pushed onto C<@AnyEvent::Task::Server::children_sockets>. Otherwise, the keep-alive pipe and the server's PID are returned. Closing the pipe will terminate the worker gracefully. Killing the PID will attempt to terminate the worker immediately.
+AnyEvent::Task accomplishes this mapping with L<Callback::Frame>. For example:
 
-Since this constructor forks and requires using AnyEvent in both the parent and child processes, it is important that you not install any AnyEvent watchers before calling it. The usual caveats about forking AnyEvent applications apply (see AnyEvent docs).
+    use Callback::Frame;
+
+    frame(code => sub {
+      $client->checkout->hash('secret', sub {
+        my ($checkout, $crypted) = @_;
+        $conn->response("Hashed password is $crypted\n");
+      });
+    }, catch => sub {
+      my $back_trace = shift;
+      $conn->log("Error: $back_trace");
+    })->();
+
+Why not just an error callback supplied by AnyEvent::Task? Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework. It can be used to with any module that takes callbacks. Instead of passing C<sub { ... }> into these libraries, simply pass in C<fub { ... }>. The wrapped callback will first re-establish any error handlers installed with C<frame> (along with any C<local> variables), and then run the actual callback. Note that it's important that all callbacks be created with C<fub> so that the dynamic context is always tracked.
+
+Additionally, Callback::Frame provides a error handler stack so you can have nested error handlers (similar to nested C<eval>s). This is useful when you wish to have a top-level "bail-out" error handler and also nested error handlers that know how to retry or recover from an error in an async operation.
+
+Libraries like AnyEvent::Task can trigger errors inside the dynamic callback of a context by using the C<existing_frame> feature of L<Callback::Frame>. In addition to errors that occur while running the callback, L<AnyEvent::Task> uses this feature to throw errors if the worker process dies or times out.
 
 
-=head1 DESIGN
 
-The first thing to realise is that each client maintains a "pool" of connections to worker processes. Every time a checkout is issued, it is placed into a first-come, first-serve queue. Once a worker process becomes available, it is associated with that checkout until that checkout is garbage collected. Each checkout also maintains a queue of requests, so that as soon as this worker process is allocated, the requests are filled also on a first-come, first-server basis.
-
-C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see L<Callback::Frame>). FIXME: document this better.
-
-Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts. Because of this, you should usually install a L<Callback::Frame> C<catch> block to handle timeout errors gracefully (log something and send error message to the client if applicable).
-
-Additionally, because of checkout queuing the maximum number of worker processes a client should attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other checkouts becomes available. Note that typically a request is issued as soon as the checkout is created and in this case the timer starts then, meaning that some checkouts may never be serviced if the system can't handle the load.
-
-The C<min_workers> argument can be used to "pre-fork" some "hot-standby" worker processes when creating the client. The default is 2 though note that this may change (FIXME: consider if the default should be 0).
 
 
 
@@ -200,21 +248,22 @@ Why a custom protocol, client, and server? Can't we just use something like HTTP
 
 It depends.
 
-AnyEvent::Task clients send discrete messages and receive ordered, discrete replies from workers, much like HTTP. The AnyEvent::Task protocol can be extended in a backwards compatible manner like HTTP. AnyEvent::Task communication can be pipelined (and possibly in the future even compressed), like HTTP.
+AnyEvent::Task clients send discrete messages and receive ordered, discrete replies from workers, much like HTTP. The AnyEvent::Task protocol can be extended in a backwards compatible manner like HTTP. AnyEvent::Task communication can be pipelined (and possibly in the future even compressed) like HTTP.
 
 AnyEvent::Task servers (currently) all obey a very specific implementation policy: They are kind of like CGI servers in that each process is guaranteed to be handling only one connection at once so it can perform blocking operations without worrying about holding up other connections.
 
-Actually, since a single process can handle many requests in a row, the AnyEvent::Task server is more like a FastCGI server, except that while a client holds a checkout, it is guaranteed an exclusive lock on that process. With a FastCGI server, it is assumed that requests are stateless so you can't necessarily be sure you'll get the same process for two consecutive requests. In fact, if an error is thrown in the FastCGI handler you may never get the same process back again.
+Actually, since a single process can handle many requests in a row, the AnyEvent::Task server is more like a FastCGI server or a apache mod_perl handler except that while a client holds a checkout it is guaranteed an exclusive lock on that process. With a FastCGI server it is assumed that requests are stateless so you can't necessarily be sure you'll get the same process for two consecutive requests. In fact, if an error is thrown in the FastCGI handler you may never get the same process back again, possibly losing valuable error state.
 
-Probably the most fundamental difference between the AnyEvent::Task protocol and HTTP is that in AnyEvent::Task, the client is the dominant protocol orchestrator whereas in HTTP it is the server.
+The most fundamental difference between the AnyEvent::Task protocol and HTTP is that in AnyEvent::Task the client is the dominant protocol orchestrator whereas in HTTP it is the server.
 
 In AnyEvent::Task, the client manages the worker pool and the client decides if/when the worker process should terminate. In the normal case, a client will just return the worker to its worker pool. A worker can request a shutdown when its parent server dies but can't outright refuse to accept commands until the client is good and ready.
 
-Client process can be started and checkouts can be obtained before the server is even started. The client will continue to try to obtain worker processes until either the server starts or the checkout in question times out.
+Client process can be started and checkouts can be obtained before the server is even started. The client will continue to try to obtain worker processes until either the server starts or the checkout's timeout period elapses.
 
 The client decides the timeout for each checkout and different clients can have different timeouts while connecting to the same server.
 
-The client even decides how many minimum and maximum workers it will run at once. The server is really just a simple on-demand-forking server and most of the sophistication is in the asynchronous client.
+The client even decides how many minimum and maximum workers it requires at once. The server is really just a simple on-demand-forking server and most of the sophistication is in the asynchronous client.
+
 
 
 
@@ -222,7 +271,7 @@ The client even decides how many minimum and maximum workers it will run at once
 
 L<The AnyEvent::Task github repo|https://github.com/hoytech/AnyEvent-Task>
 
-This module is integrated with L<Callback::Frame>. In order to handle exceptions in a meaningful way, you will need to use this module. FIXME: Add examples and synopsis entry demonstrating this.
+AnyEvent::Task is integrated with L<Callback::Frame>. In order to handle exceptions in a meaningful way, you will need to use this module.
 
 There's about a million CPAN modules that do similar things.
 
@@ -236,7 +285,7 @@ If you're into POE there is L<POE::Component::Pool::DBI>, L<POEx::WorkerPool>, L
 
 =head1 BUGS
 
-This module is still being developed and there are still some important FIXMEs remaining. Please sit tight.
+This module is still being developed although the interface should be mostly stable.
 
 
 
@@ -247,7 +296,7 @@ Doug Hoyte, C<< <doug@hcsw.org> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012 Doug Hoyte.
+Copyright 2012-2013 Doug Hoyte.
 
 This module is licensed under the same terms as perl itself.
 
