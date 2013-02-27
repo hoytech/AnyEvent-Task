@@ -1,3 +1,17 @@
+0.700   2013-02-27
+  * 2 tests were missing from manifest
+  * License and github meta info
+  * Diagnostics and timeout bump in test to debug some
+    cpan-tester environments
+  * Remove MYMETA files from distribution
+  * Bugfix: Worker was using default JSON::XS settings instead
+    of utf-8 mode
+  * Add unicode test
+  * Document error handling with Callback::Frame
+  * Remove scary "the api might change" warning. I think we're
+    pretty much stable now
+  * Misc doc edits
+
 0.602   2012-12-13
   * Exceptions in setup callback are now propagated to client
   * Minor doc updates (more coming)
