@@ -121,7 +121,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
 =head1 DESCRIPTION
 
-B<WARNING:> This module's API may change without warning. Also, the docs are somewhat incomplete and out of date. I will be fixing this soonish.
+B<WARNING:> The above client examples don't implement error handling. See the L<ERROR HANDLING> section for details on how to add this.
 
 The synopsis makes this module sounds much more complicated than it actually is. L<AnyEvent::Task> is a fork-on-demand but persistent-worker server (L<AnyEvent::Task::Server>) combined with an asynchronous interface to a request queue and pooled-worker client (L<AnyEvent::Task::Client>). Both client and server are of course built with L<AnyEvent> because it's awesome. However, workers can't use AnyEvent (yet).
 
@@ -142,13 +142,13 @@ You can treat a checkout object as an object that proxies its method calls to a 
 
 Each client maintains a "pool" of connections to worker processes. Every time a checkout is issued, it is placed into a first-come, first-serve queue. Once a worker process becomes available, it is associated with that checkout until that checkout is garbage collected. Each checkout also maintains a queue of requests, so that as soon as this worker process is allocated, the requests are filled also on a first-come, first-server basis.
 
-C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see the  L<ERROR HANDLING> section).
+C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires however, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see the L<ERROR HANDLING> section).
 
-Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts. Because of this, you should usually install a L<Callback::Frame> C<catch> block to handle timeout errors gracefully (log something and send error message to the client if applicable).
+Note that since timeouts are associated with a checkout, the client process can be started before the server and as long as the server is started within C<timeout> seconds, no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to fill all queued checkouts.
 
-Additionally, because of checkout queuing the maximum number of worker processes a client should attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other checkouts becomes available. Note that typically a request is issued as soon as the checkout is created and in this case the timer starts then, meaning that some checkouts may never be serviced if the system can't handle the load.
+Because of checkout queuing, the maximum number of worker processes a client will attempt to obtain can be limited with the C<max_workers> argument when creating a client object. If there are more live checkouts than C<max_workers>, the remaining checkouts will have to wait until one of the other workers becomes available. Because of timeouts, some checkouts may never be serviced if the system can't handle the load (those requests should be sent "service temporarily unavailable" errors).
 
-The C<min_workers> argument can be used to "pre-fork" some "hot-standby" worker processes when creating the client. The default is 2 though note that this may change (FIXME: consider if the default should be 0).
+The C<min_workers> argument can be used to pre-fork "hot-standby" worker processes when creating the client. The default is 2 though note that this may change to 0 in the future.
 
 
 
@@ -211,6 +211,7 @@ A future backwards compatible RPC protocol may use L<Storable> or something else
 
 
 
+
 =head1 ERROR HANDLING
 
 If you expected a function (ie C<hash>) to throw some kind of exception, in a synchronous program you might do something like this (assuming C<$conn> is some kind of connection context object):
@@ -264,7 +265,7 @@ AnyEvent::Task clients send discrete messages and receive ordered, discrete repl
 
 AnyEvent::Task servers (currently) all obey a very specific implementation policy: They are kind of like CGI servers in that each process is guaranteed to be handling only one connection at once so it can perform blocking operations without worrying about holding up other connections.
 
-Actually, since a single process can handle many requests in a row, the AnyEvent::Task server is more like a FastCGI server or a apache mod_perl handler except that while a client holds a checkout it is guaranteed an exclusive lock on that process. With a FastCGI server it is assumed that requests are stateless so you can't necessarily be sure you'll get the same process for two consecutive requests. In fact, if an error is thrown in the FastCGI handler you may never get the same process back again, possibly losing valuable error state.
+Actually, since a single process can handle many requests in a row, the AnyEvent::Task server is more like a FastCGI server except that while a client holds a checkout it is guaranteed an exclusive lock on that process. With a FastCGI server it is assumed that requests are stateless so you can't necessarily be sure you'll get the same process for two consecutive requests. In fact, if an error is thrown in the FastCGI handler you may never get the same process back again, preventing you from being able to recover from the error or at least collect process state for logging reasons.
 
 The most fundamental difference between the AnyEvent::Task protocol and HTTP is that in AnyEvent::Task the client is the dominant protocol orchestrator whereas in HTTP it is the server.
 
@@ -274,7 +275,7 @@ Client process can be started and checkouts can be obtained before the server is
 
 The client decides the timeout for each checkout and different clients can have different timeouts while connecting to the same server.
 
-The client even decides how many minimum and maximum workers it requires at once. The server is really just a simple on-demand-forking server and most of the sophistication is in the asynchronous client.
+The client even decides how many minimum and maximum workers it requires at once. The server is really just a simple fork-on-demand server and most of the sophistication is in the asynchronous client.
 
 
 
@@ -312,19 +313,15 @@ Copyright 2012-2013 Doug Hoyte.
 
 This module is licensed under the same terms as perl itself.
 
-
-
-
-
-
 =cut
 
 
 
 
-
-
 __END__
+
+
+
 
 PROTOCOL
 
@@ -373,3 +370,5 @@ Manual termination of checkouts
 Document hung_worker_timeout
 
 min_workers == 0 doesn't work.. always starts up 1 worker
+
+max checkout queue size
