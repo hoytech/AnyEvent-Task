@@ -9,7 +9,7 @@ use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
-use Test::More tests => 15;
+use Test::More tests => 16;
 
 
 ## The point of this test is to verify that arguments, errors, and
@@ -38,15 +38,16 @@ my $cv = AE::cv;
 
 
 {
-  $client->checkout->(1, [2], { three => 3, }, sub {
+  $client->checkout->(1, [2], { three => 3, λ => '𝇚' }, sub {
     my ($checkout, $ret) = @_;
 
     ok(!$@);
-    ok(@$ret == 3);
-    ok($ret->[0] == 1);
-    ok($ret->[1]->[0] == 2);
-    ok(ref($ret->[2]) eq 'HASH');
-    ok($ret->[2]->{three} eq 3);
+    is(@$ret, 3);
+    is($ret->[0], 1);
+    is($ret->[1]->[0], 2);
+    is(ref($ret->[2]), 'HASH');
+    is($ret->[2]->{three}, 3);
+    is(ord($ret->[2]->{λ}), 0x1D1DA);
   });
 
   $client->checkout->some_method(1, sub {
