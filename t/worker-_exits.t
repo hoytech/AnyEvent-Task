@@ -10,12 +10,15 @@ use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 
 ## The point of this test is to ensure that when a worker connection dies
 ## suddenly, ie with POSIX::_exit(), an appropriate error is promptly raised
-## in the callback's dynamic environment.
+## in the callback's dynamic environment. This test also verifies that
+## fatal errors like losing a worker connection put a checkout into
+## a permanent error state that will always return the same fatal
+## error message.
 
 
 
@@ -43,11 +46,19 @@ my $cv = AE::cv;
     die "checkout was serviced?";
   }, catch => sub {
     my $err = $@;
-    print "## error: $err\n";
     ok(1, "error hit");
     ok($err !~ /timed out after/, "no timed out err");
-    ok($err =~ /worker connection suddenly died/, "sudden death err");
-    $cv->send;
+    like($err, qr/worker connection suddenly died/, "sudden death err");
+
+    $checkout->(frame(code => sub {
+      die "shouldn't get here";
+    }, catch => sub {
+      my $err = $@;
+
+      like($err, qr/worker connection suddenly died/, "got same fatal error after calling checkout again");
+
+      $cv->send;
+    }));
   }));
 }
 
