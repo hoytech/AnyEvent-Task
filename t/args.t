@@ -41,19 +41,19 @@ my $cv = AE::cv;
   $client->checkout->(1, [2], { three => 3, λ => '𝇚' }, sub {
     my ($checkout, $ret) = @_;
 
-    ok(!$@);
+    ok(!$@, 'no error set');
     is(@$ret, 3);
     is($ret->[0], 1);
     is($ret->[1]->[0], 2);
     is(ref($ret->[2]), 'HASH');
     is($ret->[2]->{three}, 3);
-    is(ord($ret->[2]->{λ}), 0x1D1DA);
+    is(ord($ret->[2]->{λ}), 0x1D1DA, 'unicode character round-tripped ok');
   });
 
   $client->checkout->some_method(1, sub {
     my ($checkout, $ret) = @_;
 
-    ok(!$@);
+    ok(!$@, 'no error set 2');
     ok(@$ret == 2);
     ok($ret->[0] eq 'some_method');
     ok($ret->[1] == 1);
@@ -62,7 +62,7 @@ my $cv = AE::cv;
   $client->checkout->error('die please', frame(code => sub {
     die "should never get here";
   }, catch => sub {
-    ok($@);
+    ok($@, 'no error set 3');
     ok($@ =~ /ERR: die please/);
     ok($@ !~ /setup exception/i);
   }));
@@ -73,8 +73,8 @@ my $cv = AE::cv;
     });
   }, catch => sub {
     my $trace = shift;
-    ok($@ =~ /ERR: again, plz die/);
-    ok($trace =~ /MY CLIENT NAME -> error/);
+    ok($@ =~ /ERR: again, plz die/, '$@ has the exception');
+    ok($trace =~ /MY CLIENT NAME -> error/, 'argument to callback has stack trace');
 
     $cv->send;
   })->();
