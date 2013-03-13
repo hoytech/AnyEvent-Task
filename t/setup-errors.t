@@ -45,7 +45,7 @@ my $cv = AE::cv;
   }, catch => sub {
     my $err = $@;
 
-    ok($err =~ /setup exception: SETUP EXCEPTION 1/);
+    like($err, qr/setup exception: SETUP EXCEPTION 1/);
 
     $cv->send;
   }));
@@ -64,7 +64,7 @@ $cv = AE::cv;
   }, catch => sub {
     my $err = $@;
 
-    ok($err =~ /setup exception: SETUP EXCEPTION 2/);
+    like($err, qr/setup exception: SETUP EXCEPTION 2/);
 
     $cv->send;
   }));
