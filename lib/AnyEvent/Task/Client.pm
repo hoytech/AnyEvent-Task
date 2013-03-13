@@ -136,9 +136,6 @@ sub try_to_fill_pending_checkouts {
 sub make_worker_occupied {
   my ($self, $worker) = @_;
 
-  ## Cancel the "sk" detection push_read
-  $worker->{_queue} = [];
-
   delete $self->{available_workers}->{0 + $worker};
   $self->{occupied_workers}->{0 + $worker} = $worker;
 
@@ -158,12 +155,6 @@ sub make_worker_available {
 
   ## Cancel any push_read callbacks installed while worker was occupied
   $worker->{_queue} = [];
-
-  ## Install an "sk" detection push_read
-  $worker->push_read( json => sub {
-    my ($handle, $response) = @_;
-    $self->destroy_worker($worker) if $response->[0] eq 'sk';
-  });
 
   delete $self->{occupied_workers}->{0 + $worker};
   $self->{available_workers}->{0 + $worker} = $worker;

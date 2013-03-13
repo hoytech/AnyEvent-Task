@@ -155,17 +155,11 @@ sub try_to_fill_requests {
 
     my ($response_code, $meta, $response_value) = @$response;
 
-    $self->{worker_wants_to_shutdown} = 1 if $meta->{sk};
-
     if ($response_code eq 'ok') {
       local $@ = undef;
       $cb->($self, $response_value);
     } elsif ($response_code eq 'er') {
       $self->throw_error_non_fatal($response_value);
-    } elsif ($response_code eq 'sk') {
-      $self->{worker_wants_to_shutdown} = 1;
-      $self->{worker}->push_read( json => $self->{cmd_handler} );
-      return;
     } else {
       die "Unrecognized response_code: $response_code";
     }

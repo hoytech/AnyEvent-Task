@@ -343,15 +343,6 @@ Client wants to shutdown:
     just shuts down connection
 
 
-Worker wants to shutdown:
-  worker -> client
-    ['sk', {META}]
-         <-
-    (client now closes connection)
-
-("sk" stands for silent key)
-
-
 
 
 
@@ -360,8 +351,6 @@ TODO
 
 servers must wait() on all their children before terminating
   - support relinquishing accept() socket during this period?
-
-Write test for worker-requested "sk" graceful shutdown
 
 Manual termination of checkouts
   - Write test to ensure callback isn't run after timing out
