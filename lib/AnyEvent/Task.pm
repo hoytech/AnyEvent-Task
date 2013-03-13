@@ -349,6 +349,8 @@ Client wants to shutdown:
 
 TODO
 
+! need test for checkout_done feature
+
 servers must wait() on all their children before terminating
   - support relinquishing accept() socket during this period?
 
