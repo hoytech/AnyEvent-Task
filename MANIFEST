@@ -13,6 +13,7 @@ README
 t/args.t
 t/manual-request-abort.t
 t/max_checkouts.t
+t/refork_after_error.t
 t/sequential.t
 t/setup-errors.t
 t/setup.t
