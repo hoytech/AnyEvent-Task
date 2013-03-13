@@ -9,7 +9,7 @@ use Callback::Frame;
 
 
 use overload fallback => 1,
-             '&{}' => \&invoked_as_sub;
+             '&{}' => \&_invoked_as_sub;
 
 our $AUTOLOAD;
 
@@ -41,20 +41,20 @@ sub AUTOLOAD {
 
   $self->{last_name} = $name;
 
-  return $self->queue_request([ $name, @_, ]);
+  return $self->_queue_request([ $name, @_, ]);
 }
 
-sub invoked_as_sub {
+sub _invoked_as_sub {
   my $self = shift;
 
   return sub {
     $self->{last_name} = undef;
 
-    return $self->queue_request([ @_, ]);
+    return $self->_queue_request([ @_, ]);
   };
 }
 
-sub queue_request {
+sub _queue_request {
   my ($self, $request) = @_;
 
   unless (Callback::Frame::is_frame($request->[-1])) {
@@ -76,14 +76,14 @@ sub queue_request {
 
   push @{$self->{pending_requests}}, $request;
 
-  $self->install_timeout_timer;
+  $self->_install_timeout_timer;
 
   $self->try_to_fill_requests;
 
   return;
 }
 
-sub install_timeout_timer {
+sub _install_timeout_timer {
   my ($self) = @_;
 
   return if !defined $self->{timeout};
@@ -149,7 +149,7 @@ sub try_to_fill_requests {
     return;
   }
 
-  $self->install_timeout_timer;
+  $self->_install_timeout_timer;
 
   $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
