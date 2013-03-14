@@ -26,6 +26,8 @@ sub _new {
                      exists $arg{client}->{timeout} ? $arg{client}->{timeout} :
                      30;
 
+  $self->{log_defer_object} = $arg{log_defer_object} if exists $arg{log_defer_object};
+
   $self->{pending_requests} = [];
 
   return $self;
@@ -157,6 +159,10 @@ sub try_to_fill_requests {
     my ($handle, $response) = @_;
 
     my ($response_code, $meta, $response_value) = @$response;
+
+    if ($self->{log_defer_object} && $meta->{ld}) {
+      $self->{log_defer_object}->merge($meta->{ld});
+    }
 
     if ($response_code eq 'ok') {
       local $@ = undef;

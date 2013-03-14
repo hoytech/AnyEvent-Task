@@ -12,6 +12,7 @@ my %args = (
     'JSON::XS' => 0,
     'Guard' => 0,
     'Callback::Frame' => 0,
+    'Log::Defer' => '0.201',
   },
   LICENSE => 'perl',
   dist => {

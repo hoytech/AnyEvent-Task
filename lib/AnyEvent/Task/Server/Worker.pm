@@ -79,6 +79,8 @@ sub process_data {
     if ($cmd eq 'do') {
       my $val;
 
+      local $AnyEvent::Task::Logger::log_defer_object;
+
       eval {
         if (!$setup_has_been_run) {
           $server->{setup}->();
@@ -89,6 +91,9 @@ sub process_data {
       };
 
       my $err = $@;
+
+      $output_meta->{ld} = $AnyEvent::Task::Logger::log_defer_object->{msg}
+        if defined $AnyEvent::Task::Logger::log_defer_object;
 
       if ($err) {
         $err = "$err" if blessed $err;

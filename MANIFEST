@@ -3,6 +3,7 @@ COPYING
 lib/AnyEvent/Task.pm
 lib/AnyEvent/Task/Client.pm
 lib/AnyEvent/Task/Client/Checkout.pm
+lib/AnyEvent/Task/Logger.pm
 lib/AnyEvent/Task/Server.pm
 lib/AnyEvent/Task/Server/Worker.pm
 lib/AnyEvent/Task/Util.pm
@@ -11,6 +12,7 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 README
 t/args.t
+t/logger.t
 t/manual-request-abort.t
 t/max_checkouts.t
 t/refork_after_error.t
