@@ -233,16 +233,19 @@ In your server code, use L<AnyEvent::Task::Logger>. It export the function C<log
         logger->info('about to compute some operation');
         {
           my $timer = logger->timer('computing some operation');
-          sleep 1; ## some operation
+          select undef,undef,undef, 1; ## sleep for 1 second
         }
       },
     )->run;
 
 
+Note: Portable server code should not call C<sleep> because on some systems it will interfere with the recoverable worker timeout feature implemented with C<SIGALRM>.
+
+
 In your client code, pass a Log::Defer object in when you create a checkout:
 
-    use Log::Defer;
     use AnyEvent::Task::Client;
+    use Log::Defer;
 
     my $client = AnyEvent::Task::Client->new(
                    connect => ['unix/', '/tmp/anyevent-task-test.socket'],
