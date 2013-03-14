@@ -18,7 +18,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
 =head2 Server
 
-    use AnyEvent::Task;
+    use AnyEvent::Task::Server;
     use Authen::Passphrase::BlowfishCrypt;
 
     my $dev_urandom;
