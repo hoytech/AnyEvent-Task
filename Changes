@@ -1,3 +1,11 @@
+0.720   2013-03-14
+  * Integration with Log::Defer so workers can log stuff and
+    it shows up in the client logs
+  * Complete the implementation of worker error recovery
+  * Remove undocumented "sk" protocol feature
+  * Big test-suite refactor/improvements
+  * Lots more/better docs, including for error handling/logging
+
 0.700   2013-02-27
   * 2 tests were missing from manifest
   * License and github meta info
