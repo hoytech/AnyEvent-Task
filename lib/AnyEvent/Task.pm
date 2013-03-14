@@ -212,43 +212,6 @@ A future backwards compatible RPC protocol may use L<Storable> or something else
 
 
 
-=head1 ERROR HANDLING
-
-If you expected a function (ie C<hash>) to throw some kind of exception, in a synchronous program you might do something like this (assuming C<$conn> is some kind of connection context object):
-
-    my $crypted;
-
-    eval {
-      $crypted = hash('secret');
-    };
-
-    if ($@) {
-      $conn->log("Error: $@");
-    } else {
-      $conn->response("Hashed password is $crypted\n");
-    }
-
-But in an asynchronous program, typically the C<hash> function would initiate some kind of asynchronous operation and then return immediately. The error might come back at any time in the future, in which case you need a way to map the exception that is thrown back to the C<$conn> object.
-
-AnyEvent::Task accomplishes this mapping with L<Callback::Frame>. For example:
-
-    use Callback::Frame;
-
-    frame(code => sub {
-      $client->checkout->hash('secret', sub {
-        my ($checkout, $crypted) = @_;
-        $conn->response("Hashed password is $crypted\n");
-      });
-    }, catch => sub {
-      my $back_trace = shift;
-      $conn->log("Error: $back_trace");
-    })->();
-
-Why not just an error callback supplied by AnyEvent::Task? Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework. It can be used to with any module that takes callbacks. Instead of passing C<sub { ... }> into these libraries, simply pass in C<fub { ... }>. The wrapped callback will first re-establish any error handlers installed with C<frame> (along with any C<local> variables), and then run the actual callback. Note that it's important that all callbacks be created with C<fub> so that the dynamic context is always tracked.
-
-Additionally, Callback::Frame provides a error handler stack so you can have nested error handlers (similar to nested C<eval>s). This is useful when you wish to have a top-level "bail-out" error handler and also nested error handlers that know how to retry or recover from an error in an async operation.
-
-Libraries like AnyEvent::Task can trigger errors inside the dynamic callback of a context by using the C<existing_frame> feature of L<Callback::Frame>. In addition to errors that occur while running the callback, L<AnyEvent::Task> uses this feature to throw errors if the worker process dies or times out.
 
 
 
@@ -336,7 +299,60 @@ When run, the above client will print something like this:
                       }
         };
 
-    
+
+
+
+=head1 ERROR HANDLING
+
+If you expected some operation to throw an exception, in a synchronous program you might do something like this:
+
+    my $crypted;
+
+    eval {
+      $crypted = hash('secret');
+    };
+
+    if ($@) {
+      say "hash failed: $@";
+    } else {
+      say "hashed password is $crypted";
+    }
+
+But in an asynchronous program, typically the C<hash> operation would initiate some kind of asynchronous operation and then return immediately. The error might come back at any time in the future, in which case you need a way to map the exception that is thrown back to the C<$conn> object.
+
+AnyEvent::Task accomplishes this mapping with L<Callback::Frame>. For example:
+
+    use Callback::Frame;
+
+    frame(code => sub {
+      $client->checkout->hash('secret', sub {
+        my ($checkout, $crypted) = @_;
+        say "Hashed password is $crypted";
+      });
+    }, catch => sub {
+      my $back_trace = shift;
+      say "Error is: $@";
+      say "Full back-trace: $back_trace";
+    })->();
+
+Why not just an error callback supplied by AnyEvent::Task?
+
+Callback::Frame lets you pass dynamic state (like error handlers and dynamic variables) through nested chains of callbacks even if some of those callbacks don't support about your error handling system.
+
+Additionally, Callback::Frame provides a error handler stack so you can have nested error handlers (similar to nested C<eval>s). This is useful when you wish to have a top-level "bail-out" error handler and also nested error handlers that know how to retry or recover from an error in an async sub-operation.
+
+Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework and can be used with almost all most callback-based libraries. When using AnyEvent::Task however, your libraries must be L<AnyEvent> compatible.
+
+Instead of passing C<sub { ... }> into libraries, pass in C<fub { ... }>. When invoked, the wrapped callback will first re-establish any error handlers installed with C<frame>, and then run your actual callback code. Note that it's important that all callbacks be created with C<fub> (or C<frame>) even if you don't expect them to fail so that the dynamic context is preserved for nested callbacks that might.
+
+If you have a callback and wish to raise an exception inside its dynamic context, use C<existing_frame>:
+
+    frame(existing_frame => $current_cb,
+          code => sub {
+      die $err;
+    })->();
+
+In addition to errors that occur while running your callbacks, L<AnyEvent::Task> uses this feature of L<Callback::Frame> to throw errors if the worker process dies or times out.
 
 
 
