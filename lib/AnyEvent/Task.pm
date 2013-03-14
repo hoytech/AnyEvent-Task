@@ -253,6 +253,93 @@ Libraries like AnyEvent::Task can trigger errors inside the dynamic callback of 
 
 
 
+=head1 LOGGING
+
+Because workers run in a separate process, they can't directly use logging contexts in the client process. That is why this module is integrated with L<Log::Defer>.
+
+A L<Log::Defer> object is created on demand in the worker process and once the worker operation is done an operation, any messages in the object will be extracted and sent back to the client. The client then merges this into another Log::Defer object that is passed in when creating a checkout.
+
+In your server code, use L<AnyEvent::Task::Logger>. It export the function C<logger> which returns a L<Log::Defer> object:
+
+    use AnyEvent::Task::Server;
+    use AnyEvent::Task::Logger;
+
+    AnyEvent::Task::Server->new(
+      listen => ['unix/', '/tmp/anyevent-task-test.socket'],
+      interface => sub {
+        logger->info('about to compute some operation');
+        {
+          my $timer = logger->timer('computing some operation');
+          sleep 1; ## some operation
+        }
+      },
+    )->run;
+
+
+In your client code, pass a Log::Defer object in when you create a checkout:
+
+    use Log::Defer;
+    use AnyEvent::Task::Client;
+
+    my $client = AnyEvent::Task::Client->new(
+                   connect => ['unix/', '/tmp/anyevent-task-test.socket'],
+                 );
+
+    my $log_defer_object = Log::Defer->new(sub {
+                                             my $msg = shift;
+                                             use Data::Dumper; ## or whatever
+                                             print Dumper($msg);
+                                           });
+
+    $log_defer_object->info('going to compute some operation in a worker');
+
+    my $checkout = $client->checkout(log_defer_object => $log_defer_object);
+
+    my $cv = AE::cv;
+
+    $checkout->(sub {
+      $log_defer_object->info('finished some operation');
+      $cv->send;
+    });
+
+    $cv->recv;
+
+
+When run, the above client will print something like this:
+
+
+    $VAR1 = {
+          'start' => '1363232705.96839',
+          'end' => '1.027309',
+          'logs' => [
+                      [
+                        '0.000179',
+                        30,
+                        'going to compute some operation in a worker'
+                      ],
+                      [
+                        '0.023881061050415',
+                        30,
+                        'about to compute some operation'
+                      ],
+                      [
+                        '1.025965',
+                        30,
+                        'finished some operation'
+                      ]
+                    ],
+          'timers' => {
+                        'computing some operation' => [
+                                                        '0.024089061050415',
+                                                        '1.02470206105041'
+                                                      ]
+                      }
+        };
+
+    
+
+
+
 
 
 =head1 COMPARISON WITH HTTP
