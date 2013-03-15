@@ -58,18 +58,28 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
     my $checkout; $checkout = $client->checkout( timeout => 5, );
 
+    my $cv = AE::cv;
+
     $checkout->hash('secret',
       sub {
         my ($checkout, $crypted) = @_;
 
         print "Hashed password is $crypted\n";
 
-        $checkout->verify($crypted,
+        $checkout->verify($crypted, 'secret',
           sub {
             my ($checkout, $result) = @_;
-            print "Verify result is $result\n":
+            print "Verify result is $result\n";
+            $cv->send;
           });
       });
+
+    $cv->recv;
+
+=head2 Output
+
+    Hashed password is $2a$10$NwTOwxmTlG0Lk8YZMT29/uysC9RiZX4jtWCx.deBbb2evRjCq6ovi
+    Verify result is 1
 
 
 
@@ -84,40 +94,52 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
     my $dbh;
 
-    my $server = AnyEvent::Task::Server->new(
-                   listen => ['unix/', '/tmp/anyevent-task.socket'],
-                   setup => sub {
-                     $dbh = DBI->connect(...);
-                   },
-                   interface => sub {
-                     my ($method, @args) = @_;
-                     $args[0] = $dbh->prepare_cached($args[0]) if defined $args[0];
-                     $dbh->$method(@args);
-                   },
-                 );
-
-    $server->run; # or AE::cv->recv
-
+    AnyEvent::Task::Server->new(
+      listen => ['unix/', '/tmp/anyevent-task.socket'],
+      setup => sub {
+        $dbh = DBI->connect("dbi:SQLite:dbname=/tmp/junk.sqlite3","","",{ RaiseError => 1, });
+      },
+      interface => sub {
+        my ($method, @args) = @_;
+        $dbh->$method(@args);
+      },
+    )->run;
 
 =head2 Client
 
     use AnyEvent::Task::Client;
 
-    my $dbh_pool = AnyEvent::Task::Client->new(
-                     connect => ['unix/', '/tmp/anyevent-task.socket'],
-                   );
+    my $client = AnyEvent::Task::Client->new(
+                   connect => ['unix/', '/tmp/anyevent-task.socket'],
+                 );
 
-    my $username = 'jimmy';
+    my $dbh = $client->checkout;
 
-    my $dbh = $dbh_pool->checkout;
+    my $cv = AE::cv;
 
-    $dbh->selectrow_hashref(q{ SELECT email FROM user WHERE username = ? },
-                            undef, $username,
-      sub {
-        my ($dbh, $row) = @_;
-        print "User's email is $row->{email}\n";
-        ## Use same $dbh here if using transactions
-      });
+    $dbh->do(q{ CREATE TABLE user(username TEXT PRIMARY KEY, email TEXT); },
+      sub { });
+
+    ## Requests will queue up on the checkout and execute in order:
+
+    $dbh->do(q{ INSERT INTO user (username, email) VALUES (?, ?) },
+             undef, 'jimmy',
+                    'jimmy@example.com',
+      sub { });
+
+    $dbh->selectrow_hashref(q{ SELECT * FROM user }, sub {
+      my ($dbh, $user) = @_;
+      print "username: $user->{username}, email: $user->{email}\n";
+      $cv->send;
+    });
+
+    $cv->recv;
+
+=head2 Output
+
+    username: jimmy, email: jimmy@example.com
+
+
 
 =head1 DESCRIPTION
 
