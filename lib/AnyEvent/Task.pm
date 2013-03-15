@@ -485,8 +485,6 @@ Client wants to shutdown:
 
 TODO
 
-! make client examples in synopsis actually runnable lol
-
 ! need tests for the following features:
   - checkout_done signal sent to worker to issue rollback or whatever
   - recovering stuff off a worker after C<SIGALRM> timeout
