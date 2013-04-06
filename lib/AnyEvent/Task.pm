@@ -500,19 +500,20 @@ Transaction done:
 
 TODO
 
-! optionally limit number of times a worker can be checked before
-  reforking a new one to deal with leaky code
+! optionally limit number of times a worker can be checked out
+  before reforking a new one to deal with leaky code
 
 ! max checkout queue size
-  - start delivering fatal errors to some. at front of queue
-    or back of queue though?
+  - start delivering fatal errors to some (at front of queue
+    or back of queue though?)
   - test for this
 
-! need tests for the following features:
-  - checkout_done signal sent to worker to issue rollback or whatever
-  - recovering stuff off a worker after C<SIGALRM> timeout
-
 ! docs: write good error handling example
+
+! a worker that throws an error should clear out the request queue
+  in the checkout (ie in DBI example)
+
+! Log::Defer integration so you don't have to manually add timers
 
 Servers must wait() on all their children before terminating.
   Support relinquishing accept() socket during this period?
@@ -521,3 +522,7 @@ Manual termination of checkouts
   - Write test to ensure queued callbacks aren't run
 
 Document hung_worker_timeout and SIGALRM stuff better
+
+need tests for the following features:
+  - checkout_done signal sent to worker to issue rollback or whatever
+  - recovering stuff off a worker after C<SIGALRM> timeout
