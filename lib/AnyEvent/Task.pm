@@ -272,7 +272,7 @@ In your server code, use L<AnyEvent::Task::Logger>. It exports the function C<lo
 Note: Portable server code should not call C<sleep> because on some systems it will interfere with the recoverable worker timeout feature implemented with C<SIGALRM>.
 
 
-In your client code, pass a Log::Defer object in when you create a checkout:
+In your client code, pass a L<Log::Defer> object in when you create a checkout:
 
     use AnyEvent::Task::Client;
     use Log::Defer;
@@ -357,7 +357,7 @@ AnyEvent::Task accomplishes this mapping with L<Callback::Frame>.
 
 Callback::Frame lets you preserve error handlers (and C<local> variables) across asynchronous callbacks. Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework and can be used with almost all most callback-based libraries.
 
-However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction doesn not apply to your server code. That is one of the main purposes of AnyEvent::Task.
+However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction obviously does not apply to your server code (that being one of the main purposes of AnyEvent::Task -- accessing blocking resources from an asynchronous program).
 
 As an example usage of Callback::Frame, here is how we would handle errors thrown from a worker process running the C<hash> method in an asychronous client program:
 
@@ -381,13 +381,22 @@ As an example usage of Callback::Frame, here is how we would handle errors throw
 Of course if C<hash> is something like a bcrypt hash function it is very unlikely to raise an exception so maybe it's a bad example. Or maybe it's a really good example: In addition to errors that occur while running your callbacks, L<AnyEvent::Task> uses L<Callback::Frame> to throw errors if the worker process times out, so if the bcrypt work factor is really cranked up it might hit the default 30 second time limit.
 
 
-=head2 Alternative error handling
 
-Why not just call the callback but set C<$@> to indicate an error has occurred? This approach is used by L<AnyEvent::DBI> for example but I believe Callback::Frame is superior to this. The problem is that exceptions are supposed to be an out-of-band message and code that doesn't handle them will have the exceptions bubbled up, usually to a top-level error handler. Invoking the callback when an error occurs forces exceptions to be handled in-band.
+=head2 Reforking of workers after errors
 
-Why not just have AnyEvent::Task expose an error callback? I believe Callback::Frame is superior to this also.
+If a worker throws an error, the client receives the error but the worker process stays running. As long as the client has a reference to the checkout, it can still be used to communicate with that worker so you can access error states, rollback transactions, or clean-up something.
 
-With error callbacks you still have to write error handler callbacks everywhere an error might be thrown instead of having a single "catch-all" top-level error handler.
+Once the checkout is released however, by default the worker will be shutdown instead of returning to the client's worker pool as in the normal case where no errors were thrown. This can be prevented by setting the C<dont_refork_after_error> option in the client options. This only really matters if your C<setup> routines take a long time and errors are being thrown frequently.
+
+There are exceptions to returning workers that threw errors back into the worker pool: workers that have thrown fatal errors such as loss of connection or hung worker timeout errors. These errors are stored in the checkout and for as long as the checkout exists, any operations on it will return the stored fatal error. The worker connection is closed and a new worker process is forked.
+
+
+
+=head2 Rationale for Callback::Frame
+
+Why not just call the callback but set C<$@> to indicate an error has occurred? This is the approach taken with L<AnyEvent::DBI> and L<AnyEvent::Worker> for example but I believe the L<Callback::Frame> interface is superior to this. The problem is that exceptions are supposed to be an out-of-band message and code that doesn't handle them will have the exceptions bubbled up, usually to a top-level error handler. Invoking the callback when an error occurs forces exceptions to be handled in-band.
+
+Why not just have AnyEvent::Task expose an error callback? I believe Callback::Frame is superior to this also: With error callbacks you still have to write error handler callbacks everywhere an error might be thrown instead of having a single "catch-all" top-level error handler.
 
 Callback::Frame provides an error handler stack so you can have nested error handlers (similar to nested C<eval>s). This is useful when you wish to have a top-level "bail-out" error handler and also nested error handlers that know how to retry or recover from an error in an async sub-operation.
 
