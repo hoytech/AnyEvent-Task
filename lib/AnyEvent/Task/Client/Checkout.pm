@@ -193,7 +193,7 @@ sub DESTROY {
     delete $self->{client}->{workers_to_checkouts}->{0 + $worker} if $self->{client};
     delete $self->{worker};
 
-    if ($self->{fatal_error} || ($self->{error_occurred} && $self->{client} && $self->{client}->{refork_after_error})) {
+    if ($self->{fatal_error} || ($self->{error_occurred} && $self->{client} && !$self->{client}->{dont_refork_after_error})) {
       $self->{client}->destroy_worker($worker) if $self->{client};
       $self->{client}->populate_workers if $self->{client};
     } else {

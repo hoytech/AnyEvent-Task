@@ -25,7 +25,7 @@ sub new {
   $self->{min_workers} = $self->{max_workers} if $self->{min_workers} > $self->{max_workers};
   $self->{timeout} = $arg{timeout} if exists $arg{timeout};
   $self->{max_checkouts} = $arg{max_checkouts} if exists $arg{max_checkouts};
-  $self->{refork_after_error} = 1 if $arg{refork_after_error};
+  $self->{dont_refork_after_error} = 1 if $arg{dont_refork_after_error};
 
   $self->{total_workers} = 0;
   $self->{connecting_workers} = {};

@@ -11,11 +11,13 @@ use AnyEvent::Task::Client;
 use Test::More tests => 7;
 
 
-## The point of this test is to verify that a checkout's methods can
-## still be called after a regular error is thrown, perhaps to access
-## error states or to rollback a transaction. This test also verifies
-## the refork_after_error client option kills off the worker process
-## and creates a new one if it threw an error was thrown in its lifetime.
+## This test verifies that the dont_refork_after_error client stops the
+## worker process from being killed off after a checkout is released
+## where the worker threw an error in its lifetime.
+
+## Note that a checkout's methods can still be called after an error
+## is thrown but before the checkout is released, perhaps to access
+## error states or to rollback a transaction.
 
 
 
@@ -32,7 +34,7 @@ AnyEvent::Task::Server::fork_task_server(
 my $client = AnyEvent::Task::Client->new(
                connect => ['unix/', '/tmp/anyevent-task-test.socket'],
                max_workers => 1,
-               refork_after_error => 1,
+               dont_refork_after_error => 1,
              );
 
 
@@ -85,7 +87,7 @@ my $pid;
 
   $checkout->get_pid(sub {
     my ($checkout, $ret) = @_;
-    isnt($ret, $pid, "new worker was created since previous checkout had an error and we set refork_after_error");
+    is($ret, $pid, "new worker was not created since previous checkout had an error and we set dont_refork_after_error");
 
     $cv->send;
   });

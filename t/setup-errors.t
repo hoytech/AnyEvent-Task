@@ -14,7 +14,7 @@ use Test::More tests => 2;
 
 ## The point of this test is to verify that exceptions thrown in
 ## setup callbacks are propagated to the client. It also validates
-## that by default workers aren't restarted on setup errors.
+## that by default workers are restarted on setup errors.
 
 
 my $attempt = 0;
@@ -26,7 +26,7 @@ AnyEvent::Task::Server::fork_task_server(
              die "SETUP EXCEPTION $attempt";
            },
   interface => sub {
-                 die "INTERFACE EXCEPTION";
+                 die "INTERFACE EXCEPTION (shouldn't happen)";
                },
 );
 
@@ -56,7 +56,6 @@ my $cv = AE::cv;
 $cv->recv;
 
 
-
 $cv = AE::cv;
 
 {
@@ -65,7 +64,7 @@ $cv = AE::cv;
   }, catch => sub {
     my $err = $@;
 
-    like($err, qr/setup exception: SETUP EXCEPTION 2/);
+    like($err, qr/setup exception: SETUP EXCEPTION 1/);
 
     $cv->send;
   }));

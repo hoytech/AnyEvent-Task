@@ -15,7 +15,7 @@ t/args.t
 t/logger.t
 t/manual-request-abort.t
 t/max_checkouts.t
-t/refork_after_error.t
+t/dont_refork_after_error.t
 t/sequential.t
 t/setup-errors.t
 t/setup.t
