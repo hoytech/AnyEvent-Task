@@ -10,6 +10,8 @@ our $VERSION = '0.720';
 
 __END__
 
+=encoding utf-8
+
 =head1 NAME
 
 AnyEvent::Task - Client/server-based asynchronous worker pool
