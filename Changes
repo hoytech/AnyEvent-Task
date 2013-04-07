@@ -3,6 +3,9 @@
     refork_after_error, is now the default behaviour. Instead
     there is a new option called dont_refork_after_error to get
     back the original behaviour.
+  * If log_defer_object is passed in when creating a checkout,
+    operations on this checkout are recorded as Log::Defer
+    timer events
 
 0.720   2013-03-14
   * Integration with Log::Defer so workers can log stuff and

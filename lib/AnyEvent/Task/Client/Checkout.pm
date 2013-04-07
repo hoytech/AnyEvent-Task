@@ -52,7 +52,7 @@ sub _invoked_as_sub {
   return sub {
     $self->{last_name} = undef;
 
-    return $self->_queue_request([ @_, ]);
+    return $self->_queue_request([ undef, @_, ]);
   };
 }
 
@@ -151,12 +151,27 @@ sub try_to_fill_requests {
     return;
   }
 
+  my $method_name = $request->[0];
+
+  if (!defined $method_name) {
+    $method_name = '->()';
+    shift @$request;
+  }
+
   $self->_install_timeout_timer;
 
   $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
+  my $timer;
+
+  if ($self->{log_defer_object}) {
+    $timer = $self->{log_defer_object}->timer($method_name);
+  }
+
   $self->{cmd_handler} = sub {
     my ($handle, $response) = @_;
+
+    undef $timer;
 
     my ($response_code, $meta, $response_value) = @$response;
 
