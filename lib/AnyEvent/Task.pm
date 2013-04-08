@@ -513,7 +513,8 @@ TODO
 ! a worker that throws an error should clear out the request queue
   in the checkout (ie in DBI example)
 
-! Log::Defer integration so you don't have to manually add timers
+Make names more consistent between callback::frame backtraces and
+auto-generated log::defer timers
 
 Servers must wait() on all their children before terminating.
   Support relinquishing accept() socket during this period?
