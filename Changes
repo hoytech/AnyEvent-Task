@@ -1,3 +1,4 @@
+0.750   2013-04-08
   * Backwards-incompatible change: The behaviour enabled by the
     undocumented client option added in the previous release,
     refork_after_error, is now the default behaviour. Instead
@@ -6,6 +7,7 @@
   * If log_defer_object is passed in when creating a checkout,
     operations on this checkout are recorded as Log::Defer
     timer events
+  * Major documentation updates, including working SYNOPSIS
 
 0.720   2013-03-14
   * Integration with Log::Defer so workers can log stuff and
