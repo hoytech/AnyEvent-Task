@@ -345,7 +345,7 @@ AnyEvent::Task accomplishes this mapping with L<Callback::Frame>.
 
 Callback::Frame lets you preserve error handlers (and C<local> variables) across asynchronous callbacks. Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework and can be used with almost all most callback-based libraries.
 
-However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction obviously does not apply to your server code (that being one of the main purposes of AnyEvent::Task -- accessing blocking resources from an asynchronous program).
+However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction obviously does not apply to your server code. That is the main purpose of this module: accessing blocking resources from an asynchronous program.
 
 As an example usage of Callback::Frame, here is how we would handle errors thrown from a worker process running the C<hash> method in an asychronous client program:
 
@@ -403,7 +403,7 @@ Why a custom protocol, client, and server? Can't we just use something like HTTP
 
 It depends.
 
-AnyEvent::Task clients send discrete messages and receive ordered, discrete replies from workers, much like HTTP. The AnyEvent::Task protocol can be extended in a backwards compatible manner like HTTP. AnyEvent::Task communication can be pipelined and possibly in the future even compressed like HTTP.
+AnyEvent::Task clients send discrete messages and receive ordered replies from workers, much like HTTP. The AnyEvent::Task protocol can be extended in a backwards compatible manner like HTTP. AnyEvent::Task communication can be pipelined and possibly in the future even compressed like HTTP.
 
 AnyEvent::Task servers (currently) all obey a very specific implementation policy: They are like CGI servers in that each process they fork is guaranteed to be handling only one connection at once so it can perform blocking operations without worrying about holding up other connections.
 
@@ -426,15 +426,15 @@ The client even decides how many minimum and maximum workers it requires at once
 
 L<The AnyEvent::Task github repo|https://github.com/hoytech/AnyEvent-Task>
 
-AnyEvent::Task is integrated with L<Callback::Frame>. In order to handle exceptions in a meaningful way, you will need to use this module.
+In order to handle exceptions in a meaningful way with this module, you must use L<Callback::Frame>.
 
-There's about a million CPAN modules that do similar things.
+There are about a million CPAN modules that do similar things.
 
-This module is designed to be used in a non-blocking, process-based unix program. Depending on your exact requirements you might find something else useful: L<Parallel::ForkManager>, L<Thread::Pool>, an HTTP server of some kind, &c.
+This module is designed to be used in a non-blocking, process-based unix program. Depending on your exact requirements you might find something else useful: L<Parallel::ForkManager>, L<Thread::Pool>, or an HTTP server of some kind.
 
 If you're into AnyEvent, L<AnyEvent::DBI> and L<AnyEvent::Worker> (based on AnyEvent::DBI), and L<AnyEvent::ForkObject> send and receive commands from worker processes similar to this module. L<AnyEvent::Worker::Pool> also has an implementation of a worker pool. L<AnyEvent::Gearman> can interface with Gearman services.
 
-If you're into POE there is L<POE::Component::Pool::DBI>, L<POEx::WorkerPool>, L<POE::Component::ResourcePool>, L<POE::Component::PreforkDispatch>, L<Cantella::Worker>, &c.
+If you're into POE there is L<POE::Component::Pool::DBI>, L<POEx::WorkerPool>, L<POE::Component::ResourcePool>, L<POE::Component::PreforkDispatch>, L<Cantella::Worker>.
 
 
 
