@@ -417,7 +417,7 @@ It depends.
 
 AnyEvent::Task clients send discrete messages and receive ordered, discrete replies from workers, much like HTTP. The AnyEvent::Task protocol can be extended in a backwards compatible manner like HTTP. AnyEvent::Task communication can be pipelined and possibly in the future even compressed like HTTP.
 
-AnyEvent::Task servers (currently) all obey a very specific implementation policy: They are like CGI servers in that each process in that each process they fork is guaranteed to be handling only one connection at once so it can perform blocking operations without worrying about holding up other connections.
+AnyEvent::Task servers (currently) all obey a very specific implementation policy: They are like CGI servers in that each process they fork is guaranteed to be handling only one connection at once so it can perform blocking operations without worrying about holding up other connections.
 
 But since a single process can handle many requests in a row without exiting, the AnyEvent::Task server is more like a FastCGI server. The difference however is that while a client holds a checkout it is guaranteed an exclusive lock on that process. With a FastCGI server it is assumed that requests are stateless so you can't necessarily be sure you'll get the same process for two consecutive requests. In fact, if an error is thrown in the FastCGI handler you may never get the same process back again, preventing you from being able to recover from the error, retry, or at least collect process state for logging reasons.
 
