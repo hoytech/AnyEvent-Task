@@ -10,6 +10,7 @@
     would cancel the remote method call. Instead, now you should
     use the throw_fatal_error method on the checkout. The checkout
     will then be in an undefined state and should be discarded.
+  * Major documentation updates
 
 0.750   2013-04-08
   * Backwards-incompatible change: The behaviour enabled by the
