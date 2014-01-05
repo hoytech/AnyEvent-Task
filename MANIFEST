@@ -16,6 +16,7 @@ t/logger.t
 t/manual-request-abort.t
 t/max_checkouts.t
 t/dont_refork_after_error.t
+t/error-clears-checkout-queue.t
 t/sequential.t
 t/setup-errors.t
 t/setup.t

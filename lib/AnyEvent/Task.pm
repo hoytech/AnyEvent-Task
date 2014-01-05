@@ -510,9 +510,6 @@ TODO
 
 ! docs: write good error handling example
 
-! a worker that throws an error should clear out the request queue
-  in the checkout (ie in DBI example)
-
 Make names more consistent between callback::frame backtraces and
 auto-generated log::defer timers
 

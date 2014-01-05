@@ -118,6 +118,8 @@ sub _throw_error {
     die "_throw_error called but no callback installed. Error thrown was: $err";
   }
 
+  $self->{pending_requests} = undef;
+
   if ($current_cb) {
     frame(existing_frame => $current_cb,
           code => sub {

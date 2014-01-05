@@ -10,13 +10,13 @@ use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
-use Test::More tests => 9;
+use Test::More tests => 5;
 
 
-## The point of this test is to verify that if you call a checkout
-## object in a non-void context, destroying the resulting guard will
-## immediately terminate the request. It also verifies that fatal
-## errors cut off the worker and permanently disable the checkout.
+## The point of this test is to verify that fatal errors cut off
+## the worker and permanently disable the checkout. If methods are
+## called again on the checkout they will continue to throw the
+## fatal error.
 
 
 
@@ -39,30 +39,28 @@ my $client = AnyEvent::Task::Client->new(
 
 my $cv = AE::cv;
 
-{
-  my $checkout = $client->checkout( timeout => 1, );
+my $checkout = $client->checkout( timeout => 1, );
 
-  my $guard = $checkout->sleep_die(frame(code => sub {
-    die "checkout was serviced?";
+$checkout->sleep_die(frame(code => sub {
+  die "checkout was serviced?";
+}, catch => sub {
+  my $err = $@;
+  ok(1, "error hit");
+  like($err, qr/manual request abort/, "manual request abort err");
+  ok($err !~ /timed out after/, "no timed out err");
+  ok($err !~ /hung worker/, "no hung worker err");
+
+  $checkout->get_pid(frame(code => sub {
+    die "shouldn't get here";
   }, catch => sub {
     my $err = $@;
-    ok(1, "error hit");
-    like($err, qr/manual request abort/, "manual request abort err");
-    ok($err !~ /timed out after/, "no timed out err");
-    ok($err !~ /hung worker/, "no hung worker err");
 
-    $checkout->get_pid(frame(code => sub {
-      die "shouldn't get here";
-    }, catch => sub {
-      my $err = $@;
-
-      like($err, qr/manual request abort/, "continue to get manual abort error because error was fatal");
-      $cv->send;
-    }));
-
+    like($err, qr/manual request abort/, "continue to get manual abort error because error was fatal");
+    $cv->send;
   }));
 
-  $checkout->throw_fatal_error("manual request abort");
-}
+}));
+
+$checkout->throw_fatal_error("manual request abort");
 
 $cv->recv;
