@@ -79,7 +79,7 @@ sub _queue_request {
 
   $self->_install_timeout_timer;
 
-  $self->try_to_fill_requests;
+  $self->_try_to_fill_requests;
 
   return;
 }
@@ -135,7 +135,7 @@ sub throw_fatal_error {
   $self->_throw_error($err);
 }
 
-sub try_to_fill_requests {
+sub _try_to_fill_requests {
   my ($self) = @_;
 
   return unless exists $self->{worker};
@@ -192,7 +192,7 @@ sub try_to_fill_requests {
     delete $self->{timeout_timer};
     delete $self->{cmd_handler};
 
-    $self->try_to_fill_requests;
+    $self->_try_to_fill_requests;
   };
 
   $self->{worker}->push_read( json => $self->{cmd_handler} );

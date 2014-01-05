@@ -125,7 +125,7 @@ sub try_to_fill_pending_checkouts {
     $self->{workers_to_checkouts}->{0 + $worker} = $checkout;
     Scalar::Util::weaken($self->{workers_to_checkouts}->{0 + $worker});
 
-    $checkout->try_to_fill_requests;
+    $checkout->_try_to_fill_requests;
     return $self->try_to_fill_pending_checkouts;
   }
 
