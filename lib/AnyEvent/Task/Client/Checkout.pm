@@ -3,7 +3,6 @@ package AnyEvent::Task::Client::Checkout;
 use common::sense;
 
 use Scalar::Util;
-use Guard;
 
 use Callback::Frame;
 

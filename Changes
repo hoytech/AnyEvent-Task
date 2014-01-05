@@ -1,8 +1,15 @@
-  * Incompatible change: When multiple requests are queued up
-    a checkout, if one of the requests throws an error all the
-    pending requests are removed from the queue. This makes
-    non-nested "sequential" method-calls less dangerous and
-    more like the synchronous code it is mimicing.
+  * Backwards-incompatible change: When multiple requests are
+    queued up on a checkout, if one of the requests throws an
+    error all the pending requests are removed from the queue.
+    This makes a non-nested sequence of method-calls on a
+    checkout less dangerous and more like the synchronous code
+    it is mimicing.
+  * Removed vestigal parts of an undocumented feature that was
+    broken several releases ago: In non-void context, methods
+    on a checkout used to return a guard that when destroyed
+    would cancel the remote method call. Instead, now you should
+    use the throw_fatal_error method on the checkout. The checkout
+    will then be in an undefined state and should be discarded.
 
 0.750   2013-04-08
   * Backwards-incompatible change: The behaviour enabled by the
