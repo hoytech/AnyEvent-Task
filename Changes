@@ -9,7 +9,9 @@
     on a checkout used to return a guard that when destroyed
     would cancel the remote method call. Instead, now you should
     use the throw_fatal_error method on the checkout. The checkout
-    will then be in an undefined state and should be discarded.
+    will then throw errors every time it is accessed and should
+    be discarded.
+  * Documented max_checkouts feature for coping with memory leaks
   * Major documentation updates
 
 0.750   2013-04-08

@@ -365,7 +365,7 @@ AnyEvent::Task accomplishes this mapping with L<Callback::Frame>.
 
 Callback::Frame lets you preserve error handlers (and C<local> variables) across asynchronous callbacks. Callback::Frame is not tied to AnyEvent::Task, AnyEvent or any other async framework and can be used with almost all callback-based libraries.
 
-However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction obviously does not apply to your server code. That is the main purpose of this module: accessing blocking resources from an asynchronous program. In your server code, when there is an error condition you should simply C<die> or C<croak> as in a synchronous program.
+However, when using AnyEvent::Task, libraries that you use in the client must be L<AnyEvent> compatible. This restriction obviously does not apply to your server code, that being the main purpose of this module: accessing blocking resources from an asynchronous program. In your server code, when there is an error condition you should simply C<die> or C<croak> as in a synchronous program.
 
 As an example usage of Callback::Frame, here is how we would handle errors thrown from a worker process running the C<hash> method in an asychronous client program:
 
@@ -416,6 +416,7 @@ However, once the checkout object is destroyed, by default the worker will be sh
 
 There are cases where workers will never be returned to the worker pool: workers that have thrown fatal errors such as loss of worker connection or hung worker timeout errors. These errors are stored in the checkout and for as long as the checkout exists any methods on the checkout will immediately return the stored fatal error. Your client process can invoke this behaviour manually by calling the C<throw_fatal_error> method on a checkout object to cancel an operation and force-terminate a worker.
 
+Another reason that a worker might not be returned to the worker pool is if it has been checked out C<max_checkouts> times. If C<max_checkouts> is specified as an argument to the Client constructor, then workers will be destroyed and reforked after being checked out this number of times. When not specified, workers are never re-forked for this reason. This parameter is useful for coping with libraries that leak memory or otherwise become slower/more resource-hungry over time.
 
 
 
@@ -515,8 +516,6 @@ TODO
   - write test for this
 
 ! docs: write good error handling examples
-
-! limit number of times a worker can be checked out before reforking a new one to deal with leaky code
 
 Make names more consistent between callback::frame backtraces and auto-generated log::defer timers
 
