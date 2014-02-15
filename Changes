@@ -1,3 +1,4 @@
+0.800   2014-02-15
   * Backwards-incompatible change: When multiple requests are
     queued up on a checkout, if one of the requests throws an
     error all the pending requests are removed from the queue.
