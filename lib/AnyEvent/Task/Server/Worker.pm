@@ -7,13 +7,16 @@ use Guard;
 
 use POSIX; ## POSIX::_exit is used so we don't unlink the unix socket file created by our parent before the fork
 use IO::Select;
-use JSON::XS;
+use Sereal::Encoder;
+use Sereal::Decoder;
 use Scalar::Util qw/blessed/;
 
 
 my $setup_has_been_run;
-my $json;
 my $sel;
+my $buf;
+my $msg_len;
+my $msg_and_prefix_len;
 
 
 
@@ -32,7 +35,7 @@ sub handle_worker_wrapped {
   AnyEvent::Util::fh_nonblocking $fh, 0;
   AnyEvent::Util::fh_nonblocking $monitor_fh, 0;
 
-  $json = JSON::XS->new->utf8;
+  $buf = '';
 
   $sel = IO::Select->new;
   $sel->add($fh, $monitor_fh);
@@ -60,16 +63,37 @@ sub process_data {
   local $SIG{ALRM} = sub { die "hung worker\n" };
   alarm $server->{hung_worker_timeout} if $server->{hung_worker_timeout};
 
-  my $read_rv = sysread $fh, my $buf, 4096;
+  my $read_rv = sysread $fh, $buf, 1<<16, length($buf);
 
   if (!defined $read_rv) {
-    return if $!{EINTR};
+    return if $!{EINTR} || $!{EAGAIN} || $!{EWOULDBLOCK};
     POSIX::_exit(1);
   } elsif ($read_rv == 0) {
     POSIX::_exit(1);
   }
 
-  for my $input ($json->incr_parse($buf)) {
+  while(1) {
+    if (!defined $msg_len) {
+      $msg_len = eval { unpack "w", $buf };
+
+      if (!defined $msg_len) {
+        return if length($buf) < 10;
+        POSIX::_exit(1); ## stream is corrupted?
+      }
+
+      my $repacked = pack("w", $msg_len);
+
+      $msg_and_prefix_len = length($repacked) + $msg_len;
+    }
+
+    return if length($buf) < $msg_and_prefix_len;
+
+    my $input = substr($buf, $msg_and_prefix_len - $msg_len, $msg_len);
+    $buf = substr($buf, $msg_and_prefix_len);
+    $msg_len = $msg_and_prefix_len = undef;
+
+    $input = Sereal::Decoder::decode_sereal($input, { refuse_objects => 1, refuse_snappy => 1, });
+
     my $output;
     my $output_meta = {};
 
@@ -110,14 +134,14 @@ sub process_data {
         }
       }
 
-      my $output_json = eval { encode_json($output); };
+      my $output_sereal = eval { Sereal::Encoder::encode_sereal($output, { croak_on_bless => 1, snappy => 0, }); };
 
       if ($@) {
-        $output = ['er', $output_meta, "error JSON encoding interface output: $@",];
-        $output_json = encode_json($output);
+        $output = ['er', $output_meta, "error Sereal encoding interface output: $@",];
+        $output_sereal = Sereal::Encoder::encode_sereal($output, { no_bless_objects => 1, snappy => 0, });
       }
 
-      my_syswrite($fh, $output_json);
+      my_syswrite($fh, pack("w/a*", $output_sereal));
     } elsif ($cmd eq 'dn') {
       $server->{checkout_done}->();
     } else {

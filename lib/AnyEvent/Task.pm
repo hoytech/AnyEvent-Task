@@ -174,7 +174,7 @@ Both client and server are of course built with L<AnyEvent>. However, workers ca
 
 Each client maintains a "pool" of connections to worker processes. Every time a checkout is requested, the request is placed into a first-come, first-serve queue. Once a worker process becomes available, it is associated with that checkout until that checkout is garbage collected which in perl means as soon as it is no longer needed. Each checkout also maintains a queue of requested method-calls so that as soon as a worker process is allocated to a checkout, any queued method calls are filled in order.
 
-C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see the L<ERROR HANDLING> section).
+C<timeout> can be passed as a keyword argument to C<checkout>. Once a request is queued up on that checkout, a timer of C<timeout> seconds (default is 30, undef means infinity) is started. If the request completes during this timeframe, the timer is cancelled. If the timer expires, the worker connection is terminated and an exception is thrown in the dynamic context of the callback (see the L<ERROR HANDLING> section).
 
 Note that since timeouts are associated with a checkout, checkouts can be created before the server is started. As long as the server is running within C<timeout> seconds, no error will be thrown and no requests will be lost. The client will continually try to acquire worker processes until a server is available, and once one is available it will attempt to allocate all queued checkouts.
 
@@ -241,11 +241,9 @@ The second format possible for C<interface> is a hash ref. This is a simple meth
       },
     },
 
-Note that since the protocol between the client and the worker process is currently JSON-based, all arguments and return values must be serializable to JSON. This includes most perl scalars like strings, a limited range of numerical types, and hash/list constructs with no cyclical references.
+Note that since the communication between the client and the worker process is done with L<Sereal>, all arguments and return values must be serialisable. See the L<Sereal> documentation regarding what is supported.
 
 Because there isn't any way for the callback to indicate the context it desires, interface subs are always called in scalar context.
-
-A future backwards compatible RPC protocol may use L<Sereal>. Although it's inefficient you can already serialise an object with Sereal manually, send the resulting string over the existing protocol, and then deserialise it in the worker.
 
 
 
@@ -517,6 +515,10 @@ TODO
 
 ! docs: write good error handling examples
 
+! on_checkout feature in worker
+
+! promise pipelining
+
 Make names more consistent between callback::frame backtraces and auto-generated log::defer timers
 
 In a graceful shutdown scenario, servers wait() on all their children before terminating.
@@ -525,7 +527,6 @@ In a graceful shutdown scenario, servers wait() on all their children before ter
 Document hung_worker_timeout and SIGALRM stuff
 
 Wire protocol:
-  - Support something other than JSON? Sereal?
   - Document the protocol?
 
 need tests for the following features:
