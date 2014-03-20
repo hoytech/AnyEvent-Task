@@ -3,10 +3,9 @@ package AnyEvent::Task::Client::Checkout;
 use common::sense;
 
 use Scalar::Util;
-use Sereal::Encoder;
-use Sereal::Decoder;
 
 use Callback::Frame;
+use RPC::Pipelined::Client;
 
 
 use overload fallback => 1,
@@ -28,6 +27,8 @@ sub _new {
                      30;
 
   $self->{log_defer_object} = $arg{log_defer_object} if exists $arg{log_defer_object};
+
+  $self->{rpc_client} = RPC::Pipelined::Client->new;
 
   $self->{pending_requests} = [];
 
@@ -60,7 +61,13 @@ sub _invoked_as_sub {
 sub _queue_request {
   my ($self, $request) = @_;
 
-  unless (Callback::Frame::is_frame($request->[-1])) {
+  if (ref $request->[-1] ne 'CODE') {
+    return $self->{rpc_client}->run(@$request);
+  }
+
+  my $cb = pop @$request;
+
+  unless (Callback::Frame::is_frame($cb)) {
     my $name = undef;
 
     if (defined $self->{client}->{name} || defined $self->{last_name}) {
@@ -69,15 +76,19 @@ sub _queue_request {
       $name .= defined $self->{last_name} ? $self->{last_name} : 'NO METHOD';
     }
 
-    my %args = (code => $request->[-1]);
+    my %args = (code => $cb);
 
     $args{name} = $name if defined $name;
 
-    $request->[-1] = frame(%args)
+    $cb = frame(%args)
       unless Callback::Frame::is_frame($request->[-1]);
   }
 
-  push @{$self->{pending_requests}}, $request;
+  $self->{rpc_client}->run(@$request);
+
+  my $packed_msg = $self->{rpc_client}->pack_msg;
+
+  push @{$self->{pending_requests}}, [ $packed_msg, $self->{last_name}, $cb, ];
 
   $self->_install_timeout_timer;
 
@@ -145,7 +156,7 @@ sub _try_to_fill_requests {
 
   my $request = shift @{$self->{pending_requests}};
 
-  my $cb = pop @{$request};
+  my $cb = pop @$request;
   $self->{current_cb} = $cb;
   Scalar::Util::weaken($self->{current_cb});
 
@@ -154,22 +165,16 @@ sub _try_to_fill_requests {
     return;
   }
 
-  my $method_name = $request->[0];
-
-  if (!defined $method_name) {
-    $method_name = '->()';
-    shift @$request;
-  }
+  my $msg_name = pop @$request;
 
   $self->_install_timeout_timer;
 
-  $self->{worker}->push_write( packstring => 'w', Sereal::Encoder::encode_sereal([ 'do', {}, @$request, ],
-                                                                                 { croak_on_bless => 1, snappy => 0, }));
+  $self->{worker}->push_write( packstring => 'w', $request->[0] );
 
   my $timer;
 
   if ($self->{log_defer_object}) {
-    $timer = $self->{log_defer_object}->timer($method_name);
+    $timer = $self->{log_defer_object}->timer($msg_name);
   }
 
   $self->{cmd_handler} = sub {
@@ -177,21 +182,19 @@ sub _try_to_fill_requests {
 
     undef $timer;
 
-    $response = Sereal::Decoder::decode_sereal($response, { refuse_objects => 1, refuse_snappy => 1, });
+    $response = $self->{rpc_client}->unpack_response($response);
 
-    my ($response_code, $meta, $response_value) = @$response;
-
-    if ($self->{log_defer_object} && $meta->{ld}) {
-      $self->{log_defer_object}->merge($meta->{ld});
+    if ($self->{log_defer_object} && $response->{ld}) {
+      $self->{log_defer_object}->merge($response->{ld});
     }
 
-    if ($response_code eq 'ok') {
+    if ($response->{cmd} eq 'ok') {
       local $@ = undef;
-      $cb->($self, $response_value);
-    } elsif ($response_code eq 'er') {
-      $self->_throw_error($response_value);
+      $cb->($self, $response->{val});
+    } elsif ($response->{cmd} eq 'er') {
+      $self->_throw_error($response->{val});
     } else {
-      die "Unrecognized response_code: $response_code";
+      die "Unrecognized response cmd: $response->{cmd}";
     }
 
     delete $self->{timeout_timer};
@@ -218,13 +221,13 @@ sub DESTROY {
       $self->{client}->destroy_worker($worker) if $self->{client};
       $self->{client}->populate_workers if $self->{client};
     } else {
-      $worker->push_write( packstring => 'w', Sereal::Encoder::encode_sereal([ 'dn', {} ], { croak_on_bless => 1, snappy => 0, }) );
+      $worker->push_write( packstring => 'w', $self->{rpc_client}->pack_terminate_msg );
       $self->{client}->make_worker_available($worker) if $self->{client};
       $self->{client}->try_to_fill_pending_checkouts if $self->{client};
     }
   }
 
-  $self->{pending_requests} = $self->{current_cb} = $self->{timeout_timer} = $self->{cmd_handler} = undef;
+  $self->{pending_requests} = $self->{current_cb} = $self->{timeout_timer} = $self->{cmd_handler} = $self->{rpc_client} = undef;
 }
 
 
