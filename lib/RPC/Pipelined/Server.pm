@@ -4,13 +4,19 @@ use strict;
 
 use Sereal::Encoder;
 use Sereal::Decoder;
+use Data::Rmap qw/rmap_ref/;
+
+use RPC::Pipelined::Promise;
 
 
 sub new {
-  my ($class, %args);
+  my ($class, %args) = @_;
 
   my $self = \%args;
   bless $self, $class;
+
+  $self->{promises} = {};
+  $self->{next_promise_id} = 0;
 
   return $self;
 }
@@ -19,14 +25,16 @@ sub new {
 sub exec {
   my ($self, $msg_encoded) = @_;
 
-  my $msg = Sereal::Decoder::decode_sereal($msg_encoded, { refuse_objects => 1, refuse_snappy => 1, });
+  local $RPC::Pipelined::Logger::log_defer_object;
+  local $RPC::Pipelined::Promise::current_server = $self;
+
+  my $msg = Sereal::Decoder::decode_sereal($msg_encoded);
 
   my $output = {};
 
   if ($msg->{cmd} eq 'do') {
-    my $val;
-
-    local $RPC::Pipelined::Logger::log_defer_object;
+    my $output_val;
+    my $output->{promise_ids} = [];
 
     eval {
       if ($self->{setup} && !$self->{setup_has_been_run}) {
@@ -34,7 +42,31 @@ sub exec {
         $self->{setup_has_been_run} = 1;
       }
 
-      $val = $server->interface($msg);
+      foreach my $call (@{ $msg->{calls} }) {
+        my $args = $call->{args};
+
+        rmap_ref {
+          if (ref $_ eq 'RPC::Pipelined::Promise') {
+            my $rmap_state = shift;
+            delete $rmap_state->{seen}->{0 + $_};
+            $_ = $_->{result};
+          }
+        } $args;
+
+        if ($call == $msg->{calls}->[-1]) {
+          $output_val = $self->{interface}->(@$args);
+        } elsif (defined $call->{wa}) {
+          my $promise = $call->{promise};
+
+          my $id = $promise->{id} = $self->{next_promise_id}++;
+          $self->{promises}->{$id} = $promise;
+          push @{ $output->{promise_ids} }, $id;
+
+          $promise->{result} = $self->{interface}->(@$args);
+        } else {
+          $self->{interface}->(@$args);
+        }
+      }
     };
 
     my $err = $@;
@@ -43,32 +75,25 @@ sub exec {
       if defined $RPC::Pipelined::Logger::log_defer_object;
 
     if ($err) {
-      $err = "$err" if blessed $err;
-
       $output->{cmd} = 'er';
       $output->{val} = $err;
     } else {
-      if (blessed $val) {
-        $output->{cmd} = 'er';
-        $output->{val} = "interface returned object: " . ref($val) . "=($val)";
-      } else {
-        $output->{cmd} = 'ok';
-        $output->{val} = $val;
-      }
+      $output->{cmd} = 'ok';
+      $output->{val} = $output_val;
     }
 
-    my $output_sereal = eval { Sereal::Encoder::encode_sereal($output, { croak_on_bless => 1, snappy => 0, }); };
+    my $output_sereal = eval { Sereal::Encoder::encode_sereal($output); };
 
     if ($@) {
       $output->{cmd} = 'er';
       $output->{val} = "error Sereal encoding interface output: $@";
-      $output_sereal = Sereal::Encoder::encode_sereal($output, { no_bless_objects => 1, snappy => 0, });
+      $output_sereal = Sereal::Encoder::encode_sereal($output);
     }
 
     return $output_sereal;
   } elsif ($msg->{cmd} eq 'dn') {
     $self->{checkout_done}->() if $self->{checkout_done};
-    $rpc_server->reset;
+    $self->reset;
   } else {
     die "unknown command: $msg->{cmd}";
   }
