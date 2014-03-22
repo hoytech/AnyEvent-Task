@@ -14,7 +14,8 @@ sub new {
   my $self = \%args;
   bless $self, $class;
 
-  $self->{calls} = [];
+  $self->{calls_building} = [];
+  $self->{calls_in_flight} = [];
 
   return $self;
 }
@@ -23,7 +24,6 @@ sub new {
 sub run {
   my ($self, @args) = @_;
 
-  die "can't begin new message, waiting for response" if $self->{in_progress};
   die "run only supports scalar and void context" if wantarray;
 
   my $call = { args => \@args, wa => wantarray, };
@@ -31,7 +31,7 @@ sub run {
   $call->{promise} = RPC::Pipelined::Promise->new
     if defined wantarray;
 
-  push @{$self->{calls}}, $call;
+  push @{$self->{calls_building}}, $call;
 
   if (defined wantarray) {
     return $call->{promise};
@@ -43,9 +43,12 @@ sub run {
 sub pack_msg {
   my ($self) = @_;
 
-  $self->{in_progress} = 1;
+  my $calls = $self->{calls_building};
+  $self->{calls_building} = [];
 
-  return Sereal::Encoder::encode_sereal({ cmd => 'do', calls => $self->{calls}, });
+  push @{ $self->{calls_in_flight} }, $calls;
+
+  return Sereal::Encoder::encode_sereal({ cmd => 'do', calls => $calls, });
 }
 
 sub unpack_response {
@@ -53,15 +56,15 @@ sub unpack_response {
 
   my $msg = Sereal::Decoder::decode_sereal($encoded_response);
 
-  foreach my $call (@{ $self->{calls} }) {
+  my $calls = shift @{ $self->{calls_in_flight} };
+
+  foreach my $call (@$calls) {
     if (exists $call->{promise}) {
       $call->{promise}->set_id(shift @{ $msg->{promise_ids} });
     }
   }
 
   delete $msg->{promise_ids};
-  delete $self->{calls};
-  $self->{in_progress} = 0;
 
   return $msg;
 }
