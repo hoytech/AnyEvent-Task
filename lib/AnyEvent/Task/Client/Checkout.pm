@@ -52,7 +52,7 @@ sub _invoked_as_sub {
   my $self = shift;
 
   return sub {
-    $self->{last_name} = undef;
+    $self->{last_name} = '->()';
 
     return $self->_queue_request([ @_, ]);
   };
