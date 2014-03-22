@@ -38,7 +38,12 @@ sub exec {
 
     eval {
       if ($self->{setup} && !$self->{setup_has_been_run}) {
-        $self->{setup}->();
+        eval {
+          $self->{setup}->();
+        };
+
+        die "setup exception: $@" if $@;
+
         $self->{setup_has_been_run} = 1;
       }
 
@@ -94,9 +99,18 @@ sub exec {
   } elsif ($msg->{cmd} eq 'dn') {
     $self->{checkout_done}->() if $self->{checkout_done};
     $self->reset;
+
+    return undef;
   } else {
     die "unknown command: $msg->{cmd}";
   }
+}
+
+
+sub reset {
+  my ($self) = @_;
+
+  $self->{promises} = {};
 }
 
 

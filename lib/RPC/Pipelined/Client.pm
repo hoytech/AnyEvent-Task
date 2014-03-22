@@ -68,6 +68,8 @@ sub unpack_response {
 
 sub pack_terminate_msg {
   my ($self) = @_;
+
+  return Sereal::Encoder::encode_sereal({ cmd => 'dn', });
 }
 
 1;

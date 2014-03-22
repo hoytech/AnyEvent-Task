@@ -54,7 +54,7 @@ sub _invoked_as_sub {
   return sub {
     $self->{last_name} = undef;
 
-    return $self->_queue_request([ undef, @_, ]);
+    return $self->_queue_request([ @_, ]);
   };
 }
 
@@ -81,7 +81,7 @@ sub _queue_request {
     $args{name} = $name if defined $name;
 
     $cb = frame(%args)
-      unless Callback::Frame::is_frame($request->[-1]);
+      unless Callback::Frame::is_frame($cb);
   }
 
   $self->{rpc_client}->run(@$request);

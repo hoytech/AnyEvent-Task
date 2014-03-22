@@ -24,6 +24,7 @@ sub handle_worker {
     handle_worker_wrapped(@_);
   };
 
+  print STDERR "Unexpected error thrown from worker: $@\n";
   POSIX::_exit(1);
 }
 
@@ -100,7 +101,9 @@ sub process_data {
 
     my $output = $rpc_server->exec($input);
 
-    my_syswrite($fh, pack("w/a*", $output_sereal));
+    if (defined $output) {
+      my_syswrite($fh, pack("w/a*", $output));
+    }
   }
 }
 
