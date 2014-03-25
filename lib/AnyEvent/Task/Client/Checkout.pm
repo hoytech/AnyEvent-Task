@@ -86,9 +86,9 @@ sub _queue_request {
 
   $self->{rpc_client}->run(@$request);
 
-  my $packed_msg = $self->{rpc_client}->pack_msg;
+  my $prepared_msg = $self->{rpc_client}->prepare;
 
-  push @{$self->{pending_requests}}, [ $packed_msg, $self->{last_name}, $cb, ];
+  push @{$self->{pending_requests}}, [ $prepared_msg, $self->{last_name}, $cb, ];
 
   $self->_install_timeout_timer;
 
@@ -169,7 +169,7 @@ sub _try_to_fill_requests {
 
   $self->_install_timeout_timer;
 
-  $self->{worker}->push_write( packstring => 'w', $request->[0] );
+  $self->{worker}->push_write( packstring => 'w', $request->[0]->pack );
 
   my $timer;
 
@@ -182,7 +182,7 @@ sub _try_to_fill_requests {
 
     undef $timer;
 
-    $response = $self->{rpc_client}->unpack_response($response);
+    $response = $self->{rpc_client}->unpack($response);
 
     if ($self->{log_defer_object} && $response->{ld}) {
       $self->{log_defer_object}->merge($response->{ld});
@@ -221,7 +221,7 @@ sub DESTROY {
       $self->{client}->destroy_worker($worker) if $self->{client};
       $self->{client}->populate_workers if $self->{client};
     } else {
-      $worker->push_write( packstring => 'w', $self->{rpc_client}->pack_terminate_msg );
+      $worker->push_write( packstring => 'w', $self->{rpc_client}->terminate->pack );
       $self->{client}->make_worker_available($worker) if $self->{client};
       $self->{client}->try_to_fill_pending_checkouts if $self->{client};
     }
