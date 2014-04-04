@@ -28,7 +28,10 @@ sub _new {
 
   $self->{log_defer_object} = $arg{log_defer_object} if exists $arg{log_defer_object};
 
-  $self->{rpc_client} = RPC::Pipelined::Client->new;
+  my $self_weakend = $self;
+  Scalar::Util::weaken($self_weakend);
+
+  $self->{rpc_client} = RPC::Pipelined::Client->new(queue_request => sub { $self_weakend->_queue_request(\@_); });
 
   $self->{pending_requests} = [];
 
@@ -144,6 +147,7 @@ sub throw_fatal_error {
   my ($self, $err) = @_;
 
   $self->{fatal_error} = $err;
+  delete $self->{cmd_handler};
 
   $self->_throw_error($err);
 }
@@ -153,6 +157,7 @@ sub _try_to_fill_requests {
 
   return unless exists $self->{worker};
   return unless @{$self->{pending_requests}};
+  return if $self->{cmd_handler};
 
   my $request = shift @{$self->{pending_requests}};
 

@@ -53,8 +53,6 @@ sub new {
     } else {
       die "interface must be a sub or a hash";
     }
-  } else {
-    die "unspecified interface";
   }
 
 
