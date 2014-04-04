@@ -46,6 +46,8 @@ sub new {
 sub populate_workers {
   my ($self) = @_;
 
+  Scalar::Util::weaken($self);
+
   return if $self->{total_workers} >= $self->{max_workers};
 
   my $workers_to_create = $self->{min_workers} - $self->{total_workers};
