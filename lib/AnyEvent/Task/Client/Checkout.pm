@@ -3,8 +3,6 @@ package AnyEvent::Task::Client::Checkout;
 use common::sense;
 
 use Scalar::Util;
-use Sereal::Encoder;
-use Sereal::Decoder;
 
 use Callback::Frame;
 
@@ -163,8 +161,7 @@ sub _try_to_fill_requests {
 
   $self->_install_timeout_timer;
 
-  $self->{worker}->push_write( packstring => 'w', Sereal::Encoder::encode_sereal([ 'do', {}, @$request, ],
-                                                                                 { croak_on_bless => 1, snappy => 0, }));
+  $self->{worker}->push_write( json => [ 'do', {}, @$request, ], );
 
   my $timer;
 
@@ -176,8 +173,6 @@ sub _try_to_fill_requests {
     my ($handle, $response) = @_;
 
     undef $timer;
-
-    $response = Sereal::Decoder::decode_sereal($response, { refuse_objects => 1, refuse_snappy => 1, });
 
     my ($response_code, $meta, $response_value) = @$response;
 
@@ -200,7 +195,7 @@ sub _try_to_fill_requests {
     $self->_try_to_fill_requests;
   };
 
-  $self->{worker}->push_read( packstring => 'w', $self->{cmd_handler} );
+  $self->{worker}->push_read( json => $self->{cmd_handler} );
 }
 
 sub DESTROY {
@@ -218,7 +213,7 @@ sub DESTROY {
       $self->{client}->destroy_worker($worker) if $self->{client};
       $self->{client}->populate_workers if $self->{client};
     } else {
-      $worker->push_write( packstring => 'w', Sereal::Encoder::encode_sereal([ 'dn', {} ], { croak_on_bless => 1, snappy => 0, }) );
+      $worker->push_write( json => [ 'dn', {} ] );
       $self->{client}->make_worker_available($worker) if $self->{client};
       $self->{client}->try_to_fill_pending_checkouts if $self->{client};
     }

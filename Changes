@@ -1,9 +1,3 @@
-  * Backwards-incompatible change: The RPC protocol has changed
-    from JSON to Sereal which means that you have to upgrade
-    your servers and clients simultaneously. I'm really, really
-    sorry about that but trust me it's worth it. To be fair,
-    the version is still pre-1.0. :)
-
 0.800   2014-02-15
   * Backwards-incompatible change: When multiple requests are
     queued up on a checkout, if one of the requests throws an
