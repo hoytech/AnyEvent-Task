@@ -1,3 +1,8 @@
+0.801   2014-02-15
+  * Bugfix: Fix memory leak of client objects.
+  * Change: Make hung worker timeout actually terminate the
+    worker to free up resources immediately.
+
 0.800   2014-02-15
   * Backwards-incompatible change: When multiple requests are
     queued up on a checkout, if one of the requests throws an
