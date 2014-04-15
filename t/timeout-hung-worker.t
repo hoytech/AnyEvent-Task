@@ -22,8 +22,7 @@ use Test::More tests => 3;
 AnyEvent::Task::Server::fork_task_server(
   listen => ['unix/', '/tmp/anyevent-task-test.socket'],
   interface => sub {
-                     #use POSIX;POSIX::_exit(1);
-                     select undef, undef, undef, 2; # can't use sleep() because sleep might use alarm
+                     select undef, undef, undef, 3; # can't use sleep() because sleep might use alarm
                      die "shouldn't get here";
                    },
   hung_worker_timeout => 1, ## can't be a float because we use alarm()
@@ -38,7 +37,7 @@ my $client = AnyEvent::Task::Client->new(
 my $cv = AE::cv;
 
 {
-  my $checkout = $client->checkout( timeout => 1.5, );
+  my $checkout = $client->checkout( timeout => 2, );
 
   $checkout->(frame(code => sub {
     die "checkout was serviced?";
@@ -47,7 +46,7 @@ my $cv = AE::cv;
     diag("Hung worker error: $err");
     ok(1, "error hit");
     ok($err !~ /timed out after/, "no timed out err");
-    ok($err =~ /hung worker/, "hung worker err");
+    ok($err =~ /worker connection suddenly/, "hung worker err");
     $cv->send;
   }));
 }

@@ -57,7 +57,7 @@ sub process_data {
   my ($server, $fh) = @_;
 
   scope_guard { alarm 0 };
-  local $SIG{ALRM} = sub { die "hung worker\n" };
+  local $SIG{ALRM} = sub { print STDERR "Killing hung worker ($$)\n"; POSIX::_exit(1); };
   alarm $server->{hung_worker_timeout} if $server->{hung_worker_timeout};
 
   my $read_rv = sysread $fh, my $buf, 4096;
