@@ -12,6 +12,7 @@ sub fork_anyevent_subprocess {
 
   my ($socka, $sockb) = AnyEvent::Util::portable_socketpair;
 
+  die "No AnyEvent watchers should be created prior to forking (AE model: $AnyEvent::MODEL)" if defined $AnyEvent::MODEL;
   my $pid = fork;
 
   die "couldn't fork: $!" if !defined $pid;
