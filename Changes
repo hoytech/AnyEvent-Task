@@ -1,3 +1,10 @@
+0.802   2015-10-23
+  * Stop using AnyEvent::Strict in the tests. It creates an
+    AE timer at compile time, therefore initializing the event
+    loop before we've had a chance to fork our server.
+  * Before forking in fork_task_server, assert that the AE
+    loop hasn't been initialized.
+
 0.801   2014-02-15
   * Bugfix: Fix memory leak of client objects.
   * Change: Make hung worker timeout actually terminate the
