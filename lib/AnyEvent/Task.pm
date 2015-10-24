@@ -519,6 +519,8 @@ TODO
 
 Make names more consistent between callback::frame backtraces and auto-generated log::defer timers
 
+make server not use AnyEvent so don't have to worry about workers unlinking unix socket in dtors
+
 In a graceful shutdown scenario, servers wait() on all their children before terminating.
   - Support relinquishing accept() socket during this period?
 
