@@ -4,7 +4,6 @@ use List::Util;
 
 use Callback::Frame;
 
-use AnyEvent::Strict;
 use AnyEvent::Util;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;

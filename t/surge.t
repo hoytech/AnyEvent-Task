@@ -2,7 +2,6 @@ use common::sense;
 
 use List::Util;
 
-use AnyEvent::Strict;
 use AnyEvent::Task::Server;
 use AnyEvent::Task::Client;
 
