@@ -1,0 +1,55 @@
+#!/usr/bin/env perl
+
+use common::sense;
+
+use IO::Handle;
+use AnyEvent;
+use AnyEvent::Task::Server;
+use JSON::XS;
+
+
+my $task_name = shift // '[anon]';
+
+my $pkg = $ENV{AET_PKG};
+die "bad package" if $pkg !~ /\A[\w:]+\z/;
+
+eval "require $pkg" || die "Couldn't require package $pkg (needed for task $task_name)";
+
+die "Couldn't find 'new' sub in $pkg (needed for task $task_name)" if !defined &{ "${pkg}::new" };
+my $constructor = \&{ "${pkg}::new" };
+
+my $checkout_done_func;
+
+if (defined &{ "${pkg}::CHECKOUT_DONE" }) {
+    $checkout_done_func = \&{ "${pkg}::CHECKOUT_DONE" };
+}
+
+
+
+
+my $keepalive_fh = IO::Handle->new();
+$keepalive_fh->fdopen($ENV{AET_KEEPALIVE_FD}, "r") || die "unable to fdopen";
+
+my $watcher = AE::io $keepalive_fh, 0, sub { exit };
+
+
+my $obj;
+
+my $server = AnyEvent::Task::Server->new(
+    listen => decode_json($ENV{AET_LISTEN} // die "need AET_LISTEN var"),
+
+    setup => sub {
+        $obj = $constructor->($pkg, @{ $ENV{AET_CONSTRUCTOR_ARGS} });
+    },
+
+    interface => sub {
+        my ($method, @args) = @_;
+        $obj->$method(@args);
+    },
+
+    $ENV{AET_HUNG_WORKER_TIMEOUT} ? ( hung_worker_timeout => $ENV{AET_HUNG_WORKER_TIMEOUT} ) : (),
+
+    $checkout_done_func ? ( checkout_done => $checkout_done_func ) : (),
+);
+
+$server->run;

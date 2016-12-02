@@ -25,7 +25,7 @@ sub fork_anyevent_subprocess {
     ## If parent closes its side of the socket we should exit
     my $watcher = AE::io $sockb, 0, sub { exit };
 
-    $code->();
+    $code->(fileno($sockb));
 
     die "AnyEvent::Task::Server->run should never return";
   }

@@ -2,6 +2,8 @@ package AnyEvent::Task::Server;
 
 use common::sense;
 
+use JSON::XS;
+
 use AnyEvent;
 use AnyEvent::Util;
 use AnyEvent::Socket;
@@ -77,6 +79,43 @@ sub fork_task_server {
 
     return undef;
   }
+}
+
+
+
+sub fork_and_exec_task_server {
+  my (%args) = @_;
+
+  if (wantarray) {
+    return AnyEvent::Task::Util::fork_anyevent_subprocess(sub {
+             _exec_task_server($_[0], \%args);
+           });
+  } else {
+    AnyEvent::Task::Util::fork_anyevent_subprocess(sub {
+      _exec_task_server($_[0], \%args);
+      return undef;
+    });
+
+    return undef;
+  }
+}
+
+
+
+sub _exec_task_server {
+  my ($fd, $args) = @_;
+
+  $ENV{AET_PKG} = $args->{pkg};
+  $ENV{AET_LISTEN} = encode_json($args->{listen});
+  $ENV{AET_CONSTRUCTOR_ARGS} = encode_json($args->{new_args});
+  $ENV{AET_HUNG_WORKER_TIMEOUT} = $args->{hung_worker_timeout};
+  $ENV{AET_KEEPALIVE_FD} = $fd;
+
+  my @cmd_line_args;
+  push @cmd_line_args, $args->{name} if defined $args->{name};
+
+  exec { 'anyevent-task-server' } 'anyevent-task-server', @cmd_line_args;
+  die "exec anyevent-task-server failed: $!";
 }
 
 
