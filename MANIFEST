@@ -24,4 +24,5 @@ t/surge.t
 t/timeout-connect.t
 t/timeout-hung-worker.t
 t/timeout-in-progress.t
+t/timeout-log-defer.t
 t/worker-_exits.t

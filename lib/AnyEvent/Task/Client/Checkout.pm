@@ -91,6 +91,8 @@ sub _install_timeout_timer {
   return if exists $self->{timeout_timer};
 
   $self->{timeout_timer} = AE::timer $self->{timeout}, 0, sub {
+    delete $self->{timeout_timer};
+
     $self->{client}->remove_pending_checkout($self);
 
     if (exists $self->{worker}) {
@@ -125,6 +127,8 @@ sub _throw_error {
       die $err;
     })->();
   }
+
+  $self->{cmd_handler} = undef;
 }
 
 sub throw_fatal_error {
