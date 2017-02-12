@@ -83,6 +83,9 @@ sub populate_workers {
                                 my ($worker, $fatal, $message) = @_;
 
                                 my $checkout = $self->{workers_to_checkouts}->{0 + $worker};
+
+                                $checkout->{timeout_timer} = undef; ## timer keeps a circular reference
+
                                 $checkout->throw_fatal_error('worker connection suddenly died') if $checkout;
 
                                 $self->destroy_worker($worker);
