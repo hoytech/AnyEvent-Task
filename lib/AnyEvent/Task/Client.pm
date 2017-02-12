@@ -191,8 +191,6 @@ sub checkout {
 sub remove_pending_checkout {
   my ($self, $checkout) = @_;
 
-  my @out;
-
   $self->{pending_checkouts} = [ grep { $_ != $checkout } @{$self->{pending_checkouts}} ];
 }
 
