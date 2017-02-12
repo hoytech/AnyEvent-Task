@@ -1,3 +1,7 @@
+0.803   2017-02-12
+  * Bugfix for timeout errors thrown by checkout with Log::Defer
+    objects installed.
+
 0.802   2015-10-23
   * Stop using AnyEvent::Strict in the tests. It creates an
     AE timer at compile time, therefore initializing the event
