@@ -25,6 +25,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
 
     my $dev_urandom;
     my $server = AnyEvent::Task::Server->new(
+                   name => 'passwd-hasher',
                    listen => ['unix/', '/tmp/anyevent-task.socket'],
                    setup => sub {
                      open($dev_urandom, "/dev/urandom") || die "open urandom: $!";
@@ -97,6 +98,7 @@ AnyEvent::Task - Client/server-based asynchronous worker pool
     my $dbh;
 
     AnyEvent::Task::Server->new(
+      name => 'dbi',
       listen => ['unix/', '/tmp/anyevent-task.socket'],
       setup => sub {
         $dbh = DBI->connect("dbi:SQLite:dbname=/tmp/junk.sqlite3","","",{ RaiseError => 1, });
@@ -153,7 +155,7 @@ The examples in the synopses are complete stand-alone programs. Run the server i
 
 Note that the client examples don't implement error checking (see the L<ERROR HANDLING> section).
 
-A server is started with C<< AnyEvent::Task::Server->new >>. This constructor should be passed in at least the C<listen> and C<interface> arguments. Keep the returned server object around for as long as you want the server to be running. C<listen> is an array ref containing the host and service options to be passed to L<AnyEvent::Socket>'s C<tcp_server> function. C<interface> is the code that should handle each request. See the L<INTERFACE> section below for its specification. A C<setup> coderef can be passed in to run some code after a new worker is forked. A C<checkout_done> coderef can be passed in to run some code whenever a checkout is released in order to perform any required clean-up.
+A server is started with C<< AnyEvent::Task::Server->new >>. This constructor should be passed in at least the C<listen> and C<interface> arguments. Keep the returned server object around for as long as you want the server to be running. C<listen> is an array ref containing the host and service options to be passed to L<AnyEvent::Socket>'s C<tcp_server> function. C<interface> is the code that should handle each request. See the L<INTERFACE> section below for its specification. If a C<name> parameter is set, it will be used to set the process name so you can see which processes are which when you run C<ps>. A C<setup> coderef can be passed in to run some code after a new worker is forked. A C<checkout_done> coderef can be passed in to run some code whenever a checkout is released in order to perform any required clean-up.
 
 A client is started with C<< AnyEvent::Task::Client->new >>. You only need to pass C<connect> to this constructor which is an array ref containing the host and service options to be passed to L<AnyEvent::Socket>'s C<tcp_connect>. Keep the returned client object around as long as you wish the client to be connected.
 
@@ -196,6 +198,7 @@ Since it's more of a bother than it's worth to run the server and the client in 
 
     ## my ($keepalive_pipe, $server_pid) =
     AnyEvent::Task::Server::fork_task_server(
+      name => 'hello',
       listen => ['unix/', '/tmp/anyevent-task.socket'],
       interface => sub {
                          return "Hello from PID $$";
@@ -266,6 +269,7 @@ In your server code, use L<AnyEvent::Task::Logger>. It exports the function C<lo
     use AnyEvent::Task::Logger;
 
     AnyEvent::Task::Server->new(
+      name => 'sleeper',
       listen => ['unix/', '/tmp/anyevent-task.socket'],
       interface => sub {
         logger->info('about to compute some operation');
@@ -474,7 +478,7 @@ Doug Hoyte, C<< <doug@hcsw.org> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2015 Doug Hoyte.
+Copyright 2012-2017 Doug Hoyte.
 
 This module is licensed under the same terms as perl itself.
 

@@ -18,11 +18,18 @@ sub new {
 
   $self->{all_done_cv} = AE::cv;
   $self->{children} = {};
+  $self->{curr_worker_id} = 0;
 
 
+  $self->{name} = $arg{name};
   $self->{setup} = $arg{setup} || sub {};
   $self->{checkout_done} = $arg{checkout_done} || sub {};
   $self->{hung_worker_timeout} = exists $arg{hung_worker_timeout} ? $arg{hung_worker_timeout} : (60*5);
+
+
+  if (defined $self->{name}) {
+    $0 = "AET-Server:$self->{name}";
+  }
 
 
   if ($arg{listen}) {
@@ -87,6 +94,8 @@ sub handle_new_connection {
 
   my ($monitor_fh1, $monitor_fh2) = AnyEvent::Util::portable_socketpair;
 
+  $self->{curr_worker_id}++;
+
   my $rv = fork;
 
   if ($rv) {
@@ -102,6 +111,10 @@ sub handle_new_connection {
     ## Don't want keep-alive pipes of other workers open in this worker
     foreach my $child (keys %{$self->{children}}) {
       close($self->{children}->{$child}->{monitor_fh});
+    }
+
+    if (defined $self->{name}) {
+      $0 = "AET-Worker:$self->{name}($self->{curr_worker_id})";
     }
 
     AnyEvent::Task::Server::Worker::handle_worker($self, $fh, $monitor_fh2);
